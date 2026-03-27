@@ -25,7 +25,7 @@ public class SessionManagerTests : IDisposable
         var manager = new SessionManager(_testDir);
         var info = new SessionInfo { Pid = 1234, Pipe = "ndb-1234", Log = "/tmp/ndb.log" };
         manager.Save(info);
-        var path = Path.Combine(_testDir, "session.json");
+        var path = Path.Combine(_testDir, "sessions", "default.json");
         Assert.True(File.Exists(path));
         var loaded = JsonSerializer.Deserialize<SessionInfo>(File.ReadAllText(path));
         Assert.Equal(1234, loaded!.Pid);

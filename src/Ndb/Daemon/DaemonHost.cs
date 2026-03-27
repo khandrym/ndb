@@ -14,12 +14,14 @@ public class DaemonHost
 {
     private readonly string _pipeName;
     private readonly bool _verbose;
+    private readonly string _sessionName;
     private readonly SessionManager _sessionManager;
 
-    public DaemonHost(string pipeName, bool verbose, SessionManager? sessionManager = null)
+    public DaemonHost(string pipeName, bool verbose, string sessionName = "default", SessionManager? sessionManager = null)
     {
         _pipeName = pipeName;
         _verbose = verbose;
+        _sessionName = sessionName;
         _sessionManager = sessionManager ?? new SessionManager();
     }
 
@@ -31,7 +33,7 @@ public class DaemonHost
         using var logger = new FileLogger(logPath, _verbose);
         logger.Info($"Daemon starting. Pipe: {_pipeName}, PID: {Environment.ProcessId}");
 
-        _sessionManager.Save(new SessionInfo
+        _sessionManager.Save(_sessionName, new SessionInfo
         {
             Pid = Environment.ProcessId,
             Pipe = _pipeName,
@@ -130,7 +132,7 @@ public class DaemonHost
         }
         finally
         {
-            _sessionManager.Delete();
+            _sessionManager.Delete(_sessionName);
             logger.Info("Daemon exiting");
         }
     }

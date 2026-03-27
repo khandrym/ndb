@@ -11,47 +11,95 @@ namespace Ndb.Daemon;
 public class SessionManager
 {
     private readonly string _ndbDir;
-    private readonly string _sessionPath;
+    private readonly string _sessionsDir;
     private readonly string _logsDir;
 
     public SessionManager(string? ndbDir = null)
     {
         _ndbDir = ndbDir ?? Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".ndb");
-        _sessionPath = Path.Combine(_ndbDir, "session.json");
+        _sessionsDir = Path.Combine(_ndbDir, "sessions");
         _logsDir = Path.Combine(_ndbDir, "logs");
     }
 
     public string LogsDir => _logsDir;
 
-    public SessionInfo? Load()
+    private string SessionPath(string name) => Path.Combine(_sessionsDir, $"{name}.json");
+
+    public SessionInfo? Load(string name = "default")
     {
-        if (!File.Exists(_sessionPath)) return null;
-        var json = File.ReadAllText(_sessionPath);
+        var path = SessionPath(name);
+        if (!File.Exists(path)) return null;
+        var json = File.ReadAllText(path);
         return JsonSerializer.Deserialize(json, NdbJsonContext.Default.SessionInfo);
     }
 
+    public void Save(string name, SessionInfo info)
+    {
+        Directory.CreateDirectory(_sessionsDir);
+        var json = JsonSerializer.Serialize(info, NdbJsonContext.Default.SessionInfo);
+        File.WriteAllText(SessionPath(name), json);
+    }
+
+    // Backward-compatible overload
     public void Save(SessionInfo info)
     {
-        Directory.CreateDirectory(_ndbDir);
-        var json = JsonSerializer.Serialize(info, NdbJsonContext.Default.SessionInfo);
-        File.WriteAllText(_sessionPath, json);
+        Save("default", info);
     }
 
-    public void Delete()
+    public void Delete(string name = "default")
     {
-        if (File.Exists(_sessionPath))
-            File.Delete(_sessionPath);
+        var path = SessionPath(name);
+        if (File.Exists(path))
+            File.Delete(path);
     }
 
-    public SessionInfo? LoadAndVerify()
+    public SessionInfo? LoadAndVerify(string name = "default")
     {
-        var info = Load();
+        var info = Load(name);
         if (info is null) return null;
         if (IsProcessAlive(info.Pid))
             return info;
-        Delete();
+        Delete(name);
         return null;
+    }
+
+    public Dictionary<string, SessionInfo> LoadAll()
+    {
+        var result = new Dictionary<string, SessionInfo>();
+        if (!Directory.Exists(_sessionsDir)) return result;
+
+        foreach (var file in Directory.GetFiles(_sessionsDir, "*.json"))
+        {
+            var name = Path.GetFileNameWithoutExtension(file);
+            try
+            {
+                var json = File.ReadAllText(file);
+                var info = JsonSerializer.Deserialize(json, NdbJsonContext.Default.SessionInfo);
+                if (info is not null)
+                    result[name] = info;
+            }
+            catch { }
+        }
+        return result;
+    }
+
+    public void MigrateIfNeeded()
+    {
+        var oldPath = Path.Combine(_ndbDir, "session.json");
+        if (!File.Exists(oldPath)) return;
+
+        try
+        {
+            var json = File.ReadAllText(oldPath);
+            var info = JsonSerializer.Deserialize(json, NdbJsonContext.Default.SessionInfo);
+            if (info is not null)
+            {
+                Save("default", info);
+            }
+            File.Delete(oldPath);
+        }
+        catch { }
     }
 
     public static bool IsProcessAlive(int pid)

@@ -71,6 +71,13 @@ public class DapClient : IDisposable
         return await SendRequestAsync("setBreakpoints", argsJson, ct);
     }
 
+    public async Task<DapResponse> SetExceptionBreakpointsAsync(string[] filters, CancellationToken ct = default)
+    {
+        var args = new SetExceptionBreakpointsArguments { Filters = filters };
+        var argsJson = JsonSerializer.SerializeToElement(args, DapJsonContext.Default.SetExceptionBreakpointsArguments);
+        return await SendRequestAsync("setExceptionBreakpoints", argsJson, ct);
+    }
+
     public async Task<DapResponse> ContinueAsync(int threadId, CancellationToken ct = default)
     {
         var args = new ContinueArguments { ThreadId = threadId };

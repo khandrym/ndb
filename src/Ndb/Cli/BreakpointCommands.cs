@@ -20,6 +20,7 @@ public static class BreakpointCommands
         group.Add(CreateList());
         group.Add(CreateEnable());
         group.Add(CreateDisable());
+        group.Add(CreateException());
 
         return group;
     }
@@ -107,6 +108,27 @@ public static class BreakpointCommands
             var p = new BreakpointIdParams { Id = id };
             var pJson = JsonSerializer.SerializeToElement(p, NdbJsonContext.Default.BreakpointIdParams);
             Environment.ExitCode = await DaemonConnector.SendCommandAsync("breakpoint.disable", pJson);
+        });
+        return cmd;
+    }
+
+    private static Command CreateException()
+    {
+        var filterOption = new Option<string?>("--filter") { Description = "Exception filter: all, user-unhandled" };
+        var clearOption = new Option<bool>("--clear") { Description = "Clear all exception filters" };
+
+        var cmd = new Command("exception") { Description = "Set exception breakpoints" };
+        cmd.Add(filterOption);
+        cmd.Add(clearOption);
+
+        cmd.SetAction(async (ParseResult pr, CancellationToken ct) =>
+        {
+            var filter = pr.GetValue(filterOption);
+            var clear = pr.GetValue(clearOption);
+
+            var p = new ExceptionFilterParams { Filter = filter, Clear = clear };
+            var pJson = JsonSerializer.SerializeToElement(p, NdbJsonContext.Default.ExceptionFilterParams);
+            Environment.ExitCode = await DaemonConnector.SendCommandAsync("breakpoint.exception", pJson);
         });
         return cmd;
     }

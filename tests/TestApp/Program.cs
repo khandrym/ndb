@@ -15,5 +15,15 @@ message = "Updated"; // line 14
 
 Console.WriteLine($"Counter: {counter}, Message: {message}");
 
+// Exception test target
+try
+{
+    throw new InvalidOperationException("Test exception");
+}
+catch (Exception ex)
+{
+    Console.WriteLine($"Caught: {ex.Message}");
+}
+
 // Keep alive for debugging
 Thread.Sleep(Timeout.Infinite);

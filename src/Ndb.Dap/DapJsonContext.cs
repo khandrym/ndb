@@ -27,6 +27,7 @@ namespace Ndb.Dap;
 [JsonSerializable(typeof(VariablesResponseBody))]
 [JsonSerializable(typeof(EvaluateArguments))]
 [JsonSerializable(typeof(EvaluateResponseBody))]
+[JsonSerializable(typeof(SetExceptionBreakpointsArguments))]
 [JsonSerializable(typeof(JsonElement))]
 [JsonSourceGenerationOptions(
     PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase,

@@ -20,6 +20,7 @@ public class RequestDispatcher
     private readonly BreakpointManager _breakpoints = new();
     private bool _terminated;
     private int? _exitCode;
+    private string[] _exceptionFilters = [];
 
     public RequestDispatcher(DapClient dap, FileLogger logger)
     {
@@ -61,6 +62,7 @@ public class RequestDispatcher
                 "breakpoint.list" => HandleBreakpointList(request),
                 "breakpoint.enable" => await HandleBreakpointEnableAsync(request, ct),
                 "breakpoint.disable" => await HandleBreakpointDisableAsync(request, ct),
+                "breakpoint.exception" => await HandleBreakpointExceptionAsync(request, ct),
 
                 "exec.continue" => await HandleExecAsync(request, "continue", ct),
                 "exec.pause" => await HandleExecPauseAsync(request, ct),
@@ -231,6 +233,36 @@ public class RequestDispatcher
 
         var result = new CommandStatusData { Status = "disabled" };
         return IpcResponse.Ok(request.Id, JsonSerializer.SerializeToElement(result, NdbJsonContext.Default.CommandStatusData));
+    }
+
+    private async Task<IpcResponse> HandleBreakpointExceptionAsync(IpcRequest request, CancellationToken ct)
+    {
+        var clear = false;
+        string? filter = null;
+
+        if (request.Params.HasValue)
+        {
+            var p = request.Params.Value;
+            if (p.TryGetProperty("clear", out var c)) clear = c.GetBoolean();
+            if (p.TryGetProperty("filter", out var f)) filter = f.GetString();
+        }
+
+        if (clear)
+        {
+            _exceptionFilters = [];
+        }
+        else if (filter is not null)
+        {
+            if (!_exceptionFilters.Contains(filter))
+                _exceptionFilters = [.. _exceptionFilters, filter];
+        }
+
+        var response = await _dap.SetExceptionBreakpointsAsync(_exceptionFilters, ct);
+        if (!response.Success)
+            return IpcResponse.Err(request.Id, -1, response.Message ?? "setExceptionBreakpoints failed");
+
+        var result = new ExceptionFilterResult { Filters = _exceptionFilters };
+        return IpcResponse.Ok(request.Id, JsonSerializer.SerializeToElement(result, NdbJsonContext.Default.ExceptionFilterResult));
     }
 
     private async Task SyncBreakpointsForFileAsync(string file, CancellationToken ct)
@@ -417,15 +449,28 @@ public class RequestDispatcher
     {
         int? frameId = null;
         int? scopeIndex = null;
+        int? variablesReference = null;
 
         if (request.Params.HasValue)
         {
             var p = request.Params.Value;
             if (p.TryGetProperty("frameId", out var fid)) frameId = fid.GetInt32();
             if (p.TryGetProperty("scopeIndex", out var si)) scopeIndex = si.GetInt32();
+            if (p.TryGetProperty("variablesReference", out var vr)) variablesReference = vr.GetInt32();
         }
 
-        // If no frameId, get stacktrace and use top frame
+        // Direct expand mode
+        if (variablesReference.HasValue)
+        {
+            var varsResp = await _dap.VariablesAsync(variablesReference.Value, ct);
+            if (!varsResp.Success)
+                return IpcResponse.Err(request.Id, -1, varsResp.Message ?? "variables failed");
+
+            var vars = varsResp.Body!.Value.Deserialize(DapJsonContext.Default.VariablesResponseBody);
+            return BuildVariablesResult(request.Id, vars);
+        }
+
+        // Standard mode: resolve frame → scopes → variables
         if (!frameId.HasValue)
         {
             var threadsResp = await _dap.ThreadsAsync(ct);
@@ -454,20 +499,27 @@ public class RequestDispatcher
         if (targetScope is null)
             return IpcResponse.Err(request.Id, -1, "no scopes available");
 
-        var varsResp = await _dap.VariablesAsync(targetScope.VariablesReference, ct);
-        if (!varsResp.Success)
-            return IpcResponse.Err(request.Id, -1, varsResp.Message ?? "variables failed");
+        var finalVarsResp = await _dap.VariablesAsync(targetScope.VariablesReference, ct);
+        if (!finalVarsResp.Success)
+            return IpcResponse.Err(request.Id, -1, finalVarsResp.Message ?? "variables failed");
 
-        var vars = varsResp.Body!.Value.Deserialize(DapJsonContext.Default.VariablesResponseBody);
+        var finalVars = finalVarsResp.Body!.Value.Deserialize(DapJsonContext.Default.VariablesResponseBody);
+        return BuildVariablesResult(request.Id, finalVars);
+    }
+
+    private IpcResponse BuildVariablesResult(int requestId, VariablesResponseBody? vars)
+    {
         var variables = (vars?.Variables ?? []).Select(v => new VarResult
         {
             Name = v.Name,
             Value = v.Value,
-            Type = v.Type
+            Type = v.Type,
+            Expandable = v.VariablesReference > 0,
+            Ref = v.VariablesReference
         }).ToArray();
 
         var result = new InspectVariablesResult { Variables = variables };
-        return IpcResponse.Ok(request.Id, JsonSerializer.SerializeToElement(result, NdbJsonContext.Default.InspectVariablesResult));
+        return IpcResponse.Ok(requestId, JsonSerializer.SerializeToElement(result, NdbJsonContext.Default.InspectVariablesResult));
     }
 
     private async Task<IpcResponse> HandleInspectEvaluateAsync(IpcRequest request, CancellationToken ct)

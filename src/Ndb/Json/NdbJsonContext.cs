@@ -34,10 +34,13 @@ namespace Ndb.Json;
 [JsonSerializable(typeof(InspectVariablesParams))]
 [JsonSerializable(typeof(InspectVariablesResult))]
 [JsonSerializable(typeof(VarResult))]
+[JsonSerializable(typeof(InspectExpandParams))]
 [JsonSerializable(typeof(InspectEvaluateParams))]
 [JsonSerializable(typeof(InspectEvaluateResult))]
 [JsonSerializable(typeof(InspectSourceParams))]
 [JsonSerializable(typeof(InspectSourceResult))]
+[JsonSerializable(typeof(ExceptionFilterParams))]
+[JsonSerializable(typeof(ExceptionFilterResult))]
 [JsonSerializable(typeof(string[]))]
 [JsonSerializable(typeof(Dictionary<string, string>))]
 [JsonSourceGenerationOptions(

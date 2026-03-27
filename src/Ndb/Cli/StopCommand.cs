@@ -9,10 +9,14 @@ public static class StopCommand
 {
     public static Command Create()
     {
+        var sessionOption = DaemonConnector.CreateSessionOption();
         var command = new Command("stop", "Stop the debug session and daemon");
+        command.Add(sessionOption);
         command.SetAction(async (ParseResult parseResult, CancellationToken ct) =>
         {
-            Environment.ExitCode = await DaemonConnector.SendCommandAsync("stop");
+            var session = parseResult.GetValue(sessionOption);
+            if (string.IsNullOrEmpty(session)) session = "default";
+            Environment.ExitCode = await DaemonConnector.SendCommandAsync("stop", session: session);
         });
         return command;
     }

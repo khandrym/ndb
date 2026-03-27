@@ -114,7 +114,7 @@ public class LaunchStatusStopTests : IAsyncLifetime
         await TestHelpers.RunNdbAsync("stop");
         await Task.Delay(500);
 
-        var result = await TestHelpers.RunNdbAsync("status");
+        var result = await TestHelpers.RunNdbAsync("status --session default");
 
         Assert.NotNull(result.Json);
         Assert.True(result.Json.Value.GetProperty("success").GetBoolean());
@@ -138,7 +138,7 @@ public class LaunchStatusStopTests : IAsyncLifetime
         await Task.Delay(1000);
 
         // Status
-        var statusResult = await TestHelpers.RunNdbAsync("status");
+        var statusResult = await TestHelpers.RunNdbAsync("status --session default");
         Assert.NotNull(statusResult.Json);
         Assert.True(statusResult.Json.Value.GetProperty("success").GetBoolean());
         Assert.True(statusResult.Json.Value.GetProperty("data").GetProperty("active").GetBoolean());
@@ -152,7 +152,7 @@ public class LaunchStatusStopTests : IAsyncLifetime
         await Task.Delay(500);
 
         // Verify stopped
-        var afterStop = await TestHelpers.RunNdbAsync("status");
+        var afterStop = await TestHelpers.RunNdbAsync("status --session default");
         Assert.NotNull(afterStop.Json);
         Assert.False(afterStop.Json.Value.GetProperty("data").GetProperty("active").GetBoolean());
     }

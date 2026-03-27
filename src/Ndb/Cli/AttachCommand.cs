@@ -20,17 +20,23 @@ public static class AttachCommand
         var pidOption = new Option<int>("--pid") { Description = "Process ID to attach to", Required = true };
         var verboseOption = new Option<bool>("--verbose") { Description = "Enable debug logging in daemon" };
 
+        var sessionOption = DaemonConnector.CreateSessionOption();
+
         var command = new Command("attach") { Description = "Attach to a running .NET process" };
         command.Add(pidOption);
         command.Add(verboseOption);
+        command.Add(sessionOption);
 
         command.SetAction(async (ParseResult parseResult, CancellationToken ct) =>
         {
             var pid = parseResult.GetValue(pidOption);
             var verbose = parseResult.GetValue(verboseOption);
+            var session = parseResult.GetValue(sessionOption);
+            if (string.IsNullOrEmpty(session)) session = "default";
 
             var sessionManager = new SessionManager();
-            var existing = sessionManager.LoadAndVerify();
+            sessionManager.MigrateIfNeeded();
+            var existing = sessionManager.LoadAndVerify(session);
             if (existing is not null)
             {
                 PrintResponse(NdbResponse.Fail("attach", "session already active, use 'ndb stop' first"));
@@ -45,7 +51,7 @@ public static class AttachCommand
                 return;
             }
 
-            var pipeName = $"ndb-{Environment.ProcessId}";
+            var pipeName = $"ndb-{session}-{Environment.ProcessId}";
             var ndbAssemblyPath = typeof(AttachCommand).Assembly.Location;
             string daemonFileName;
             string daemonArguments;
@@ -54,13 +60,13 @@ public static class AttachCommand
             {
                 // Running as DLL (e.g., dotnet Ndb.dll ...)
                 daemonFileName = Environment.ProcessPath!;
-                daemonArguments = $"\"{ndbAssemblyPath}\" __daemon --pipe {pipeName}";
+                daemonArguments = $"\"{ndbAssemblyPath}\" __daemon --pipe {pipeName} --session {session}";
             }
             else
             {
                 // Running as self-contained executable
                 daemonFileName = Environment.ProcessPath!;
-                daemonArguments = $"__daemon --pipe {pipeName}";
+                daemonArguments = $"__daemon --pipe {pipeName} --session {session}";
             }
             if (verbose) daemonArguments += " --verbose";
 

@@ -1,4 +1,5 @@
 using System;
+using System.CommandLine;
 using System.Text.Json;
 using System.Threading.Tasks;
 using Ndb.Daemon;
@@ -10,19 +11,26 @@ namespace Ndb.Cli;
 
 public static class DaemonConnector
 {
-    public static async Task<int> SendCommandAsync(string method, JsonElement? @params = null)
+    public static Option<string> CreateSessionOption()
     {
+        return new Option<string>("--session") { Description = "Session name (default: default)" };
+    }
+
+    public static async Task<int> SendCommandAsync(string method, JsonElement? @params = null, string session = "default")
+    {
+        if (string.IsNullOrEmpty(session)) session = "default";
         var sessionManager = new SessionManager();
-        var session = sessionManager.LoadAndVerify();
-        if (session is null)
+        sessionManager.MigrateIfNeeded();
+        var sessionInfo = sessionManager.LoadAndVerify(session);
+        if (sessionInfo is null)
         {
-            PrintError(method, "no active session, use 'ndb launch' to start");
+            PrintError(method, $"no active session '{session}', use 'ndb launch' to start");
             return 1;
         }
 
         try
         {
-            var transport = TransportFactory.CreateClient(session.Pipe);
+            var transport = TransportFactory.CreateClient(sessionInfo.Pipe);
             await using var _ = transport;
             await transport.ConnectAsync();
 

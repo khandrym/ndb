@@ -12,11 +12,13 @@ public static class DaemonCommand
     {
         var pipeOption = new Option<string>("--pipe") { Description = "Named pipe name", Required = true };
         var verboseOption = new Option<bool>("--verbose") { Description = "Enable debug logging" };
+        var sessionOption = new Option<string>("--session") { Description = "Session name" };
 
         var command = new Command("__daemon", "Internal: run as daemon process")
         {
             pipeOption,
-            verboseOption
+            verboseOption,
+            sessionOption
         };
         command.Hidden = true;
 
@@ -24,7 +26,9 @@ public static class DaemonCommand
         {
             var pipe = parseResult.GetValue(pipeOption)!;
             var verbose = parseResult.GetValue(verboseOption);
-            var host = new DaemonHost(pipe, verbose);
+            var session = parseResult.GetValue(sessionOption);
+            if (string.IsNullOrEmpty(session)) session = "default";
+            var host = new DaemonHost(pipe, verbose, session);
             var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
             Console.CancelKeyPress += (_, e) => { e.Cancel = true; cts.Cancel(); };
             await host.RunAsync(cts.Token);

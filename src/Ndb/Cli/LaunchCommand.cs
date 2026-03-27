@@ -22,9 +22,11 @@ public static class LaunchCommand
         var verboseOption = new Option<bool>("--verbose") { Description = "Enable debug logging in daemon" };
         var stopOnEntryOption = new Option<bool>("--stop-on-entry") { Description = "Break at entry point" };
 
+        var sessionOption = DaemonConnector.CreateSessionOption();
+
         var command = new Command("launch", "Launch a .NET app under the debugger")
         {
-            dllArg, argsOption, cwdOption, verboseOption, stopOnEntryOption
+            dllArg, argsOption, cwdOption, verboseOption, stopOnEntryOption, sessionOption
         };
 
         command.SetAction(async (ParseResult parseResult, CancellationToken ct) =>
@@ -34,10 +36,13 @@ public static class LaunchCommand
             var cwd = parseResult.GetValue(cwdOption);
             var verbose = parseResult.GetValue(verboseOption);
             var stopOnEntry = parseResult.GetValue(stopOnEntryOption);
+            var session = parseResult.GetValue(sessionOption);
+            if (string.IsNullOrEmpty(session)) session = "default";
 
             var sessionManager = new SessionManager();
+            sessionManager.MigrateIfNeeded();
 
-            var existing = sessionManager.LoadAndVerify();
+            var existing = sessionManager.LoadAndVerify(session);
             if (existing is not null)
             {
                 PrintResponse(NdbResponse.Fail("launch", "session already active, use 'ndb stop' first"));
@@ -52,8 +57,8 @@ public static class LaunchCommand
             }
 
             // Spawn daemon
-            var pipeName = $"ndb-{Environment.ProcessId}";
-            var ndbDaemonArgs = $"__daemon --pipe {pipeName}";
+            var pipeName = $"ndb-{session}-{Environment.ProcessId}";
+            var ndbDaemonArgs = $"__daemon --pipe {pipeName} --session {session}";
             if (verbose) ndbDaemonArgs += " --verbose";
 
             // Determine how to invoke the daemon:

@@ -12,6 +12,7 @@ public class ManagedBreakpoint
     public string? Condition { get; set; }
     public bool Enabled { get; set; } = true;
     public bool Verified { get; set; }
+    public string? Message { get; set; }
 }
 
 public class BreakpointManager
@@ -101,6 +102,13 @@ public class BreakpointManager
         if (!_breakpoints.TryGetValue(file, out var list)) return;
         var bp = list.FirstOrDefault(b => b.Line == line);
         if (bp is not null) bp.Verified = verified;
+    }
+
+    public void UpdateMessage(string file, int line, string? message)
+    {
+        if (!_breakpoints.TryGetValue(file, out var list)) return;
+        var bp = list.FirstOrDefault(b => b.Line == line);
+        if (bp is not null) bp.Message = message;
     }
 
     public string? GetFileForBreakpoint(int id)

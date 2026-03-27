@@ -17,15 +17,17 @@ public class RequestDispatcher
 {
     private readonly DapClient _dap;
     private readonly FileLogger _logger;
+    private readonly string? _logPath;
     private readonly BreakpointManager _breakpoints = new();
     private bool _terminated;
     private int? _exitCode;
     private string[] _exceptionFilters = [];
 
-    public RequestDispatcher(DapClient dap, FileLogger logger)
+    public RequestDispatcher(DapClient dap, FileLogger logger, string? logPath = null)
     {
         _dap = dap;
         _logger = logger;
+        _logPath = logPath;
     }
 
     public void MarkTerminated(int? exitCode)
@@ -45,6 +47,8 @@ public class RequestDispatcher
             var msg = _exitCode.HasValue
                 ? $"debuggee exited with code {_exitCode.Value}"
                 : "debuggee exited unexpectedly";
+            if (_logPath is not null)
+                msg += $". Log: {_logPath}";
             return IpcResponse.Err(request.Id, -1, msg);
         }
 
@@ -154,7 +158,12 @@ public class RequestDispatcher
     private IpcResponse HandleStatus(IpcRequest request)
     {
         var status = _terminated ? "terminated" : "running";
-        var result = new CommandStatusData { Status = status };
+        var result = new CommandStatusData
+        {
+            Status = status,
+            ExitCode = _terminated ? _exitCode : null,
+            Log = _logPath
+        };
         return IpcResponse.Ok(request.Id, JsonSerializer.SerializeToElement(result, NdbJsonContext.Default.CommandStatusData));
     }
 
@@ -175,7 +184,7 @@ public class RequestDispatcher
         var result = new BreakpointResult
         {
             Id = bp.Id, File = bp.File, Line = bp.Line,
-            Verified = bp.Verified, Enabled = bp.Enabled, Condition = bp.Condition
+            Verified = bp.Verified, Enabled = bp.Enabled, Condition = bp.Condition, Message = bp.Message
         };
         return IpcResponse.Ok(request.Id, JsonSerializer.SerializeToElement(result, NdbJsonContext.Default.BreakpointResult));
     }
@@ -203,7 +212,7 @@ public class RequestDispatcher
             Breakpoints = all.Select(bp => new BreakpointResult
             {
                 Id = bp.Id, File = bp.File, Line = bp.Line,
-                Verified = bp.Verified, Enabled = bp.Enabled, Condition = bp.Condition
+                Verified = bp.Verified, Enabled = bp.Enabled, Condition = bp.Condition, Message = bp.Message
             }).ToArray()
         };
         return IpcResponse.Ok(request.Id, JsonSerializer.SerializeToElement(result, NdbJsonContext.Default.BreakpointListResult));
@@ -284,6 +293,7 @@ public class RequestDispatcher
                 foreach (var bpInfo in body.Breakpoints)
                 {
                     _breakpoints.UpdateVerified(file, bpInfo.Line, bpInfo.Verified);
+                    _breakpoints.UpdateMessage(file, bpInfo.Line, bpInfo.Message);
                 }
             }
         }

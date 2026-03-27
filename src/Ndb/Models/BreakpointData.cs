@@ -22,6 +22,10 @@ public sealed class BreakpointResult
     [JsonPropertyName("condition")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? Condition { get; init; }
+
+    [JsonPropertyName("message")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? Message { get; init; }
 }
 
 public sealed class BreakpointListResult

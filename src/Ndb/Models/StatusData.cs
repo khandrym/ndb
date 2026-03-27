@@ -24,4 +24,12 @@ public sealed class CommandStatusData
 {
     [JsonPropertyName("status")]
     public string Status { get; init; } = "";
+
+    [JsonPropertyName("exitCode")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public int? ExitCode { get; init; }
+
+    [JsonPropertyName("log")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? Log { get; init; }
 }

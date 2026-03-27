@@ -86,6 +86,13 @@ public class DaemonHost
             using var dap = new DapClient(process.StandardOutput.BaseStream, process.StandardInput.BaseStream);
             var dispatcher = new RequestDispatcher(dap, logger);
 
+            process.EnableRaisingEvents = true;
+            process.Exited += (_, _) =>
+            {
+                logger.Error($"netcoredbg exited with code {process.ExitCode}");
+                dispatcher.MarkTerminated(process.ExitCode);
+            };
+
             var response = await dispatcher.DispatchAsync(firstRequest, ct);
             await SendResponseAsync(firstClientStream, response);
             firstClientStream.Dispose();

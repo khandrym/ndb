@@ -18,7 +18,7 @@ public class NamedPipeClientTransport : ITransport
 
     public async Task ConnectAsync(CancellationToken ct = default)
     {
-        await _client.ConnectAsync(5000, ct);
+        await _client.ConnectAsync(500, ct);
     }
 
     public async ValueTask DisposeAsync()

@@ -6,6 +6,8 @@ using System.Threading.Tasks;
 using Ndb.Dap;
 using Ndb.Dap.Messages;
 using Ndb.Ipc;
+using Ndb.Json;
+using Ndb.Models;
 
 namespace Ndb.Daemon;
 
@@ -42,7 +44,9 @@ public class RequestDispatcher
 
     private async Task<IpcResponse> HandleLaunchAsync(IpcRequest request, CancellationToken ct)
     {
+        _logger.Info("Sending initialize to netcoredbg...");
         var initResponse = await _dap.InitializeAsync(ct);
+        _logger.Info($"Initialize response: success={initResponse.Success}");
         if (!initResponse.Success)
             return IpcResponse.Err(request.Id, -1, initResponse.Message ?? "initialize failed");
 
@@ -53,32 +57,39 @@ public class RequestDispatcher
             if (p.TryGetProperty("program", out var prog))
                 launchArgs.Program = prog.GetString()!;
             if (p.TryGetProperty("args", out var args))
-                launchArgs.Args = args.Deserialize<string[]>();
+                launchArgs.Args = args.Deserialize(NdbJsonContext.Default.StringArray);
             if (p.TryGetProperty("cwd", out var cwd))
                 launchArgs.Cwd = cwd.GetString();
             if (p.TryGetProperty("stopOnEntry", out var soe))
                 launchArgs.StopAtEntry = soe.GetBoolean();
             if (p.TryGetProperty("env", out var env))
-                launchArgs.Env = env.Deserialize<Dictionary<string, string>>();
+                launchArgs.Env = env.Deserialize(NdbJsonContext.Default.DictionaryStringString);
         }
 
-        await _dap.ConfigurationDoneAsync(ct);
-
+        _logger.Info($"Sending launch to netcoredbg: program={launchArgs.Program}");
         var launchResponse = await _dap.LaunchAsync(launchArgs, ct);
+        _logger.Info($"Launch response: success={launchResponse.Success}");
         if (!launchResponse.Success)
             return IpcResponse.Err(request.Id, -1, launchResponse.Message ?? "launch failed");
 
-        return IpcResponse.Ok(request.Id, new { status = "running" });
+        _logger.Info("Sending configurationDone...");
+        await _dap.ConfigurationDoneAsync(ct);
+        _logger.Info("ConfigurationDone complete");
+
+        var resultElement = JsonSerializer.SerializeToElement(new CommandStatusData { Status = "running" }, NdbJsonContext.Default.CommandStatusData);
+        return IpcResponse.Ok(request.Id, resultElement);
     }
 
     private async Task<IpcResponse> HandleStopAsync(IpcRequest request, CancellationToken ct)
     {
         await _dap.DisconnectAsync(terminateDebuggee: true, ct);
-        return IpcResponse.Ok(request.Id, new { status = "stopped" });
+        var resultElement = JsonSerializer.SerializeToElement(new CommandStatusData { Status = "stopped" }, NdbJsonContext.Default.CommandStatusData);
+        return IpcResponse.Ok(request.Id, resultElement);
     }
 
     private IpcResponse HandleStatus(IpcRequest request)
     {
-        return IpcResponse.Ok(request.Id, new { status = "running" });
+        var resultElement = JsonSerializer.SerializeToElement(new CommandStatusData { Status = "running" }, NdbJsonContext.Default.CommandStatusData);
+        return IpcResponse.Ok(request.Id, resultElement);
     }
 }

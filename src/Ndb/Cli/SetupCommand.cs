@@ -25,7 +25,7 @@ public static class SetupCommand
             var envPath = Environment.GetEnvironmentVariable("NETCOREDBG_PATH");
             if (!string.IsNullOrEmpty(envPath) && File.Exists(envPath))
             {
-                PrintResponse(NdbResponse.Ok("setup", new { status = "already installed", path = envPath }));
+                PrintResponse(NdbResponse.Ok("setup", JsonSerializer.SerializeToElement(new SetupData { Status = "already installed", Path = envPath }, NdbJsonContext.Default.SetupData)));
                 return;
             }
 
@@ -34,7 +34,7 @@ public static class SetupCommand
             var localPath = Path.Combine(ndbDir, "netcoredbg", exeName);
             if (File.Exists(localPath))
             {
-                PrintResponse(NdbResponse.Ok("setup", new { status = "already installed", path = localPath }));
+                PrintResponse(NdbResponse.Ok("setup", JsonSerializer.SerializeToElement(new SetupData { Status = "already installed", Path = localPath }, NdbJsonContext.Default.SetupData)));
                 return;
             }
 
@@ -123,7 +123,7 @@ public static class SetupCommand
                 }
 
                 Console.Error.WriteLine($"Installed to: {finalPath}");
-                PrintResponse(NdbResponse.Ok("setup", new { status = "installed", path = finalPath }));
+                PrintResponse(NdbResponse.Ok("setup", JsonSerializer.SerializeToElement(new SetupData { Status = "installed", Path = finalPath }, NdbJsonContext.Default.SetupData)));
             }
             catch (Exception ex)
             {

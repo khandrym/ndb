@@ -53,24 +53,48 @@ public static class LaunchCommand
 
             // Spawn daemon
             var pipeName = $"ndb-{Environment.ProcessId}";
-            var ndbPath = Environment.ProcessPath!;
-            var daemonArgs = $"__daemon --pipe {pipeName}";
-            if (verbose) daemonArgs += " --verbose";
+            var ndbDaemonArgs = $"__daemon --pipe {pipeName}";
+            if (verbose) ndbDaemonArgs += " --verbose";
+
+            // Determine how to invoke the daemon:
+            // - Self-contained exe: run the exe directly with daemon args
+            // - DLL mode (dotnet Ndb.dll): run dotnet <Ndb.dll> with daemon args
+            var ndbAssemblyPath = typeof(LaunchCommand).Assembly.Location;
+            string daemonFileName;
+            string daemonArguments;
+            if (!string.IsNullOrEmpty(ndbAssemblyPath) && File.Exists(ndbAssemblyPath))
+            {
+                // Running as DLL (e.g., dotnet Ndb.dll ...)
+                daemonFileName = Environment.ProcessPath!;
+                daemonArguments = $"\"{ndbAssemblyPath}\" {ndbDaemonArgs}";
+            }
+            else
+            {
+                // Running as self-contained executable
+                daemonFileName = Environment.ProcessPath!;
+                daemonArguments = ndbDaemonArgs;
+            }
 
             var process = new Process
             {
                 StartInfo = new ProcessStartInfo
                 {
-                    FileName = ndbPath,
-                    Arguments = daemonArgs,
+                    FileName = daemonFileName,
+                    Arguments = daemonArguments,
                     UseShellExecute = false,
                     CreateNoWindow = true,
-                    RedirectStandardInput = false,
-                    RedirectStandardOutput = false,
-                    RedirectStandardError = false,
+                    // Redirect to prevent inheriting parent stdout/stderr pipes
+                    // which would cause the parent's stdout ReadToEnd to hang
+                    RedirectStandardInput = true,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
                 }
             };
             process.Start();
+            // Close the redirected streams immediately so they don't accumulate
+            process.StandardInput.Close();
+            _ = process.StandardOutput.BaseStream.CopyToAsync(Stream.Null);
+            _ = process.StandardError.BaseStream.CopyToAsync(Stream.Null);
 
             // Wait for daemon to be ready, then send launch command
             var ready = false;
@@ -83,17 +107,18 @@ public static class LaunchCommand
                     await using var _ = transport;
                     await transport.ConnectAsync();
 
+                    var launchParams = new LaunchParams
+                    {
+                        Program = dllPath,
+                        Args = cmdArgs.Length > 0 ? cmdArgs : null,
+                        Cwd = cwd,
+                        StopOnEntry = stopOnEntry
+                    };
                     var request = new IpcRequest
                     {
                         Id = 1,
                         Method = "launch",
-                        Params = JsonSerializer.SerializeToElement(new
-                        {
-                            program = dllPath,
-                            args = cmdArgs.Length > 0 ? cmdArgs : null,
-                            cwd = cwd,
-                            stopOnEntry = stopOnEntry
-                        })
+                        Params = JsonSerializer.SerializeToElement(launchParams, NdbJsonContext.Default.LaunchParams)
                     };
 
                     var json = JsonSerializer.Serialize(request, NdbJsonContext.Default.IpcRequest);

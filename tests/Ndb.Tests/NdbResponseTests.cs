@@ -9,7 +9,8 @@ public class NdbResponseTests
     [Fact]
     public void Success_SerializesToExpectedJson()
     {
-        var response = NdbResponse.Ok("launch", new { pid = 1234 });
+        var dataElement = JsonDocument.Parse("{\"pid\":1234}").RootElement.Clone();
+        var response = NdbResponse.Ok("launch", dataElement);
         var json = JsonSerializer.Serialize(response, NdbJsonContext.Default.NdbResponse);
         var doc = JsonDocument.Parse(json);
         var root = doc.RootElement;

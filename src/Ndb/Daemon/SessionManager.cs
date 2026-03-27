@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
+using Ndb.Json;
 
 namespace Ndb.Daemon;
 
@@ -27,13 +28,13 @@ public class SessionManager
     {
         if (!File.Exists(_sessionPath)) return null;
         var json = File.ReadAllText(_sessionPath);
-        return JsonSerializer.Deserialize<SessionInfo>(json);
+        return JsonSerializer.Deserialize(json, NdbJsonContext.Default.SessionInfo);
     }
 
     public void Save(SessionInfo info)
     {
         Directory.CreateDirectory(_ndbDir);
-        var json = JsonSerializer.Serialize(info, new JsonSerializerOptions { WriteIndented = true });
+        var json = JsonSerializer.Serialize(info, NdbJsonContext.Default.SessionInfo);
         File.WriteAllText(_sessionPath, json);
     }
 

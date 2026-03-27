@@ -10,7 +10,7 @@ namespace Ndb.Cli;
 
 public static class DaemonConnector
 {
-    public static async Task<int> SendCommandAsync(string method, object? @params = null)
+    public static async Task<int> SendCommandAsync(string method, JsonElement? @params = null)
     {
         var sessionManager = new SessionManager();
         var session = sessionManager.LoadAndVerify();
@@ -30,9 +30,7 @@ public static class DaemonConnector
             {
                 Id = 1,
                 Method = method,
-                Params = @params is not null
-                    ? JsonSerializer.SerializeToElement(@params)
-                    : null
+                Params = @params
             };
 
             var json = JsonSerializer.Serialize(request, NdbJsonContext.Default.IpcRequest);

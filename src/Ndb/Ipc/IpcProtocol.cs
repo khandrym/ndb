@@ -30,15 +30,9 @@ public class IpcResponse
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public IpcError? Error { get; set; }
 
-    public static IpcResponse Ok(int id, object? result = null)
+    public static IpcResponse Ok(int id, JsonElement? result = null)
     {
-        JsonElement? element = null;
-        if (result is not null)
-        {
-            var bytes = JsonSerializer.SerializeToUtf8Bytes(result);
-            element = JsonDocument.Parse(bytes).RootElement.Clone();
-        }
-        return new IpcResponse { Id = id, Result = element };
+        return new IpcResponse { Id = id, Result = result };
     }
 
     public static IpcResponse Err(int id, int code, string message)

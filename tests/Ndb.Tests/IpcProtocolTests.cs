@@ -13,7 +13,7 @@ public class IpcProtocolTests
         {
             Id = 1,
             Method = "breakpoint.set",
-            Params = JsonSerializer.SerializeToElement(new { file = "Program.cs", line = 42 })
+            Params = JsonDocument.Parse("{\"file\":\"Program.cs\",\"line\":42}").RootElement.Clone()
         };
         var json = JsonSerializer.Serialize(request, NdbJsonContext.Default.IpcRequest);
         var doc = JsonDocument.Parse(json);
@@ -26,7 +26,8 @@ public class IpcProtocolTests
     [Fact]
     public void IpcResponse_Success_SerializesCorrectly()
     {
-        var response = IpcResponse.Ok(1, new { pid = 1234 });
+        var resultElement = JsonDocument.Parse("{\"pid\":1234}").RootElement.Clone();
+        var response = IpcResponse.Ok(1, resultElement);
         var json = JsonSerializer.Serialize(response, NdbJsonContext.Default.IpcResponse);
         var doc = JsonDocument.Parse(json);
         Assert.Equal(1, doc.RootElement.GetProperty("id").GetInt32());

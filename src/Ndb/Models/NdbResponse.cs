@@ -19,15 +19,9 @@ public sealed class NdbResponse
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? Error { get; init; }
 
-    public static NdbResponse Ok(string command, object? data = null)
+    public static NdbResponse Ok(string command, JsonElement? data = null)
     {
-        JsonElement? element = null;
-        if (data is not null)
-        {
-            var bytes = JsonSerializer.SerializeToUtf8Bytes(data);
-            element = JsonDocument.Parse(bytes).RootElement.Clone();
-        }
-        return new NdbResponse { Success = true, Command = command, Data = element };
+        return new NdbResponse { Success = true, Command = command, Data = data };
     }
 
     public static NdbResponse Fail(string command, string error)

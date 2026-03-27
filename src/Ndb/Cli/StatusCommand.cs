@@ -17,22 +17,24 @@ public static class StatusCommand
             var sessionManager = new SessionManager();
             var session = sessionManager.LoadAndVerify();
 
-            NdbResponse response;
+            StatusData statusData;
             if (session is null)
             {
-                response = NdbResponse.Ok("status", new { active = false });
+                statusData = new StatusData { Active = false };
             }
             else
             {
-                response = NdbResponse.Ok("status", new
+                statusData = new StatusData
                 {
-                    active = true,
-                    pid = session.Pid,
-                    pipe = session.Pipe,
-                    log = session.Log
-                });
+                    Active = true,
+                    Pid = session.Pid,
+                    Pipe = session.Pipe,
+                    Log = session.Log
+                };
             }
 
+            var dataElement = JsonSerializer.SerializeToElement(statusData, NdbJsonContext.Default.StatusData);
+            var response = NdbResponse.Ok("status", dataElement);
             Console.WriteLine(JsonSerializer.Serialize(response, NdbJsonContext.Default.NdbResponse));
         });
         return command;

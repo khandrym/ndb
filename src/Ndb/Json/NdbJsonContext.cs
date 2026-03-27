@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Ndb.Daemon;
@@ -12,6 +13,12 @@ namespace Ndb.Json;
 [JsonSerializable(typeof(IpcError))]
 [JsonSerializable(typeof(JsonElement))]
 [JsonSerializable(typeof(SessionInfo))]
+[JsonSerializable(typeof(StatusData))]
+[JsonSerializable(typeof(CommandStatusData))]
+[JsonSerializable(typeof(LaunchParams))]
+[JsonSerializable(typeof(SetupData))]
+[JsonSerializable(typeof(string[]))]
+[JsonSerializable(typeof(Dictionary<string, string>))]
 [JsonSourceGenerationOptions(
     PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase,
     DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull)]

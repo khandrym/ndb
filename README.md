@@ -1,0 +1,195 @@
+# ndb
+
+One-shot CLI for .NET debugging. Built for AI agents.
+
+```
+ndb launch MyApp.dll --stop-on-entry
+ndb breakpoint set Program.cs 42
+ndb exec continue --wait --timeout 30
+ndb inspect variables
+ndb stop
+```
+
+Every command outputs structured JSON. One command = one action = one JSON response. No interactive prompts, no TUI — just clean machine-readable output.
+
+## Why
+
+AI agents (Claude Code, Codex, Copilot, etc.) need to debug .NET applications but can't use interactive debuggers like Visual Studio. ndb gives them a non-interactive CLI that speaks JSON, with a daemon that keeps the debug session alive between commands.
+
+## How It Works
+
+```
+ndb launch app.dll
+    |
+    +-- spawns daemon (background process)
+    |       |
+    |       +-- IPC server (Named Pipe / Unix Socket)
+    |       |
+    |       +-- DAP client --> netcoredbg --> .NET App
+    |
+    +-- sends launch command via IPC
+    +-- prints JSON result
+    +-- exits
+
+ndb <any command>
+    |
+    +-- connects to daemon via IPC
+    +-- sends command, gets response
+    +-- prints JSON, exits
+```
+
+Single binary. CLI and daemon are the same executable — no version mismatch possible.
+
+## Quick Start
+
+```bash
+# 1. Install (or build from source)
+ndb setup    # downloads netcoredbg automatically
+
+# 2. Debug
+ndb launch bin/Debug/net10.0/MyApp.dll --stop-on-entry
+ndb inspect stacktrace
+ndb exec step-over --wait
+ndb inspect variables
+ndb stop
+```
+
+## Output Format
+
+All commands return JSON to stdout:
+
+```json
+{"success": true, "command": "inspect.stacktrace", "data": {"frames": [...]}}
+{"success": false, "command": "launch", "error": "netcoredbg not found, run 'ndb setup' to install"}
+```
+
+## Commands
+
+### Session
+
+| Command | Description |
+|---|---|
+| `ndb launch <dll> [--stop-on-entry] [--args ...] [--cwd] [--verbose] [--session name]` | Launch app under debugger |
+| `ndb attach --pid <PID> [--session name]` | Attach to running process |
+| `ndb stop [--session name]` | Stop debug session |
+| `ndb status [--session name]` | Show session status (or list all sessions) |
+| `ndb setup` | Download and install netcoredbg |
+
+### Breakpoints
+
+| Command | Description |
+|---|---|
+| `ndb breakpoint set <file> <line> [--condition <expr>] [--log-message <msg>]` | Set breakpoint (with optional condition or log message) |
+| `ndb breakpoint remove <file> <line>` | Remove breakpoint |
+| `ndb breakpoint list` | List all breakpoints |
+| `ndb breakpoint enable <id>` | Enable breakpoint |
+| `ndb breakpoint disable <id>` | Disable breakpoint |
+| `ndb breakpoint exception --filter <filter>` | Break on exceptions (`all`, `user-unhandled`) |
+| `ndb breakpoint exception --clear` | Clear exception filters |
+
+### Execution
+
+| Command | Description |
+|---|---|
+| `ndb exec continue [--wait] [--timeout <sec>]` | Resume execution |
+| `ndb exec pause` | Pause execution |
+| `ndb exec step-over [--wait] [--timeout <sec>]` | Step over |
+| `ndb exec step-into [--wait] [--timeout <sec>]` | Step into |
+| `ndb exec step-out [--wait] [--timeout <sec>]` | Step out |
+| `ndb exec run-to-cursor <file> <line> [--timeout <sec>]` | Run to specific line |
+
+The `--wait` flag blocks until the debuggee stops (breakpoint, step complete, exception). Returns the stop reason, thread ID, and current frame — everything in one call.
+
+### Inspection
+
+| Command | Description |
+|---|---|
+| `ndb inspect stacktrace [--thread <id>]` | Show call stack |
+| `ndb inspect threads` | List threads |
+| `ndb inspect variables [--frame <id>] [--scope <idx>] [--expand <ref>]` | Show variables (use `--expand` for nested objects) |
+| `ndb inspect evaluate <expr> [--frame <id>]` | Evaluate expression |
+| `ndb inspect source <file> [--line <n>] [--count <n>]` | Show source code |
+
+### Multi-Session
+
+Debug multiple apps simultaneously:
+
+```bash
+ndb launch api.dll --session api
+ndb launch worker.dll --session worker
+ndb status                              # lists both sessions
+ndb breakpoint set Api.cs 42 --session api
+ndb inspect variables --session worker
+ndb stop --session api
+ndb stop --session worker
+```
+
+## Building from Source
+
+### Prerequisites
+
+- [.NET SDK 10.0](https://dotnet.microsoft.com/download/dotnet/10.0)
+- [netcoredbg](https://github.com/Samsung/netcoredbg) (auto-installed via `ndb setup`)
+
+### Build
+
+```bash
+git clone https://github.com/user/ndb.git
+cd ndb
+dotnet build ndb.slnx
+```
+
+### Run
+
+```bash
+dotnet run --project src/Ndb -- launch MyApp.dll --stop-on-entry
+```
+
+### Publish (Native AOT)
+
+```bash
+dotnet publish src/Ndb/Ndb.csproj -c Release -r win-x64 /p:PublishAot=true -o publish/
+```
+
+### Test
+
+```bash
+# Unit tests
+dotnet test tests/Ndb.Tests tests/Ndb.Dap.Tests
+
+# Integration tests (requires netcoredbg)
+NETCOREDBG_PATH=/path/to/netcoredbg dotnet test tests/Ndb.IntegrationTests
+```
+
+## Architecture
+
+```
+src/
+  Ndb/           # CLI + daemon (single binary)
+    Cli/         # Command definitions (System.CommandLine)
+    Daemon/      # Daemon host, session manager, breakpoint manager
+    Ipc/         # Named Pipes / Unix Sockets, Content-Length framing
+    Models/      # JSON response types
+    Json/        # System.Text.Json source generators
+  Ndb.Dap/       # DAP protocol library
+    Messages/    # DAP request/response/event types
+```
+
+- **IPC Protocol:** JSON-RPC over Named Pipes (Windows) / Unix Domain Sockets (Linux/macOS)
+- **DAP Protocol:** Content-Length framing over stdin/stdout to netcoredbg
+- **Serialization:** System.Text.Json with source generators (Native AOT compatible)
+
+## Configuration
+
+| Environment Variable | Description |
+|---|---|
+| `NETCOREDBG_PATH` | Path to netcoredbg binary (overrides auto-detection) |
+
+netcoredbg is discovered in this order:
+1. `NETCOREDBG_PATH` environment variable
+2. `./netcoredbg` (next to ndb binary)
+3. System PATH
+
+## License
+
+MIT

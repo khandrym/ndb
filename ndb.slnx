@@ -1,0 +1,12 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Ndb.Dap/Ndb.Dap.csproj" />
+    <Project Path="src/Ndb/Ndb.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Ndb.Dap.Tests/Ndb.Dap.Tests.csproj" />
+    <Project Path="tests/Ndb.IntegrationTests/Ndb.IntegrationTests.csproj" />
+    <Project Path="tests/Ndb.Tests/Ndb.Tests.csproj" />
+    <Project Path="tests/TestApp/TestApp.csproj" />
+  </Folder>
+</Solution>

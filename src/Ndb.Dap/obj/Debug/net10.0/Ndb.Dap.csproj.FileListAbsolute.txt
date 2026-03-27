@@ -1,0 +1,11 @@
+D:\ANDRII\WORK\PROGRAMMING\03_AI\ndb\src\Ndb.Dap\bin\Debug\net10.0\Ndb.Dap.deps.json
+D:\ANDRII\WORK\PROGRAMMING\03_AI\ndb\src\Ndb.Dap\bin\Debug\net10.0\Ndb.Dap.dll
+D:\ANDRII\WORK\PROGRAMMING\03_AI\ndb\src\Ndb.Dap\bin\Debug\net10.0\Ndb.Dap.pdb
+D:\ANDRII\WORK\PROGRAMMING\03_AI\ndb\src\Ndb.Dap\obj\Debug\net10.0\Ndb.Dap.GeneratedMSBuildEditorConfig.editorconfig
+D:\ANDRII\WORK\PROGRAMMING\03_AI\ndb\src\Ndb.Dap\obj\Debug\net10.0\Ndb.Dap.AssemblyInfoInputs.cache
+D:\ANDRII\WORK\PROGRAMMING\03_AI\ndb\src\Ndb.Dap\obj\Debug\net10.0\Ndb.Dap.AssemblyInfo.cs
+D:\ANDRII\WORK\PROGRAMMING\03_AI\ndb\src\Ndb.Dap\obj\Debug\net10.0\Ndb.Dap.csproj.CoreCompileInputs.cache
+D:\ANDRII\WORK\PROGRAMMING\03_AI\ndb\src\Ndb.Dap\obj\Debug\net10.0\Ndb.Dap.dll
+D:\ANDRII\WORK\PROGRAMMING\03_AI\ndb\src\Ndb.Dap\obj\Debug\net10.0\refint\Ndb.Dap.dll
+D:\ANDRII\WORK\PROGRAMMING\03_AI\ndb\src\Ndb.Dap\obj\Debug\net10.0\Ndb.Dap.pdb
+D:\ANDRII\WORK\PROGRAMMING\03_AI\ndb\src\Ndb.Dap\obj\Debug\net10.0\ref\Ndb.Dap.dll

@@ -38,14 +38,14 @@ public static class SetupCommand
                 return;
             }
 
-            var (osName, archName) = GetPlatformIdentifier();
-            if (osName is null)
+            var pattern = GetPlatformPattern();
+            if (pattern is null)
             {
                 PrintResponse(NdbResponse.Fail("setup", $"unsupported platform: {RuntimeInformation.OSDescription} {RuntimeInformation.OSArchitecture}"));
                 return;
             }
 
-            Console.Error.WriteLine($"Downloading netcoredbg for {osName}-{archName}...");
+            Console.Error.WriteLine($"Downloading netcoredbg ({pattern})...");
 
             try
             {
@@ -57,7 +57,6 @@ public static class SetupCommand
                 using var doc = JsonDocument.Parse(releaseJson);
                 var assets = doc.RootElement.GetProperty("assets");
 
-                var pattern = $"netcoredbg-{osName}-{archName}";
                 string? downloadUrl = null;
                 string? assetName = null;
 
@@ -135,21 +134,28 @@ public static class SetupCommand
         return command;
     }
 
-    private static (string? os, string? arch) GetPlatformIdentifier()
+    private static string? GetPlatformPattern()
     {
-        var os = OperatingSystem.IsWindows() ? "win"
-               : OperatingSystem.IsLinux() ? "linux"
+        // Asset names: netcoredbg-win64.zip, netcoredbg-linux-amd64.tar.gz, netcoredbg-osx-amd64.tar.gz
+        if (OperatingSystem.IsWindows())
+        {
+            return RuntimeInformation.OSArchitecture == Architecture.X64 ? "netcoredbg-win64" : null;
+        }
+
+        var os = OperatingSystem.IsLinux() ? "linux"
                : OperatingSystem.IsMacOS() ? "osx"
                : null;
+        if (os is null) return null;
 
         var arch = RuntimeInformation.OSArchitecture switch
         {
             Architecture.X64 => "amd64",
             Architecture.Arm64 => "arm64",
-            _ => null
+            _ => (string?)null
         };
+        if (arch is null) return null;
 
-        return (os, arch);
+        return $"netcoredbg-{os}-{arch}";
     }
 
     private static void PrintResponse(NdbResponse response)

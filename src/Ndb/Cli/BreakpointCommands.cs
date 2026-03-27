@@ -30,19 +30,22 @@ public static class BreakpointCommands
         var fileArg = new Argument<string>("file") { Description = "Source file path" };
         var lineArg = new Argument<int>("line") { Description = "Line number" };
         var conditionOption = new Option<string?>("--condition") { Description = "Conditional expression" };
+        var logMessageOption = new Option<string?>("--log-message") { Description = "Log message (use {expr} for expressions)" };
 
         var cmd = new Command("set") { Description = "Set a breakpoint" };
         cmd.Add(fileArg);
         cmd.Add(lineArg);
         cmd.Add(conditionOption);
+        cmd.Add(logMessageOption);
 
         cmd.SetAction(async (ParseResult pr, CancellationToken ct) =>
         {
             var file = System.IO.Path.GetFullPath(pr.GetValue(fileArg)!);
             var line = pr.GetValue(lineArg);
             var condition = pr.GetValue(conditionOption);
+            var logMessage = pr.GetValue(logMessageOption);
 
-            var p = new BreakpointSetParams { File = file, Line = line, Condition = condition };
+            var p = new BreakpointSetParams { File = file, Line = line, Condition = condition, LogMessage = logMessage };
             var pJson = JsonSerializer.SerializeToElement(p, NdbJsonContext.Default.BreakpointSetParams);
             Environment.ExitCode = await DaemonConnector.SendCommandAsync("breakpoint.set", pJson);
         });

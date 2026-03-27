@@ -25,4 +25,8 @@ public class SourceBreakpoint
     [JsonPropertyName("condition")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? Condition { get; set; }
+
+    [JsonPropertyName("logMessage")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? LogMessage { get; set; }
 }

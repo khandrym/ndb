@@ -26,6 +26,10 @@ public sealed class BreakpointResult
     [JsonPropertyName("message")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? Message { get; init; }
+
+    [JsonPropertyName("logMessage")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? LogMessage { get; init; }
 }
 
 public sealed class BreakpointListResult
@@ -45,6 +49,10 @@ public sealed class BreakpointSetParams
     [JsonPropertyName("condition")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? Condition { get; init; }
+
+    [JsonPropertyName("logMessage")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? LogMessage { get; init; }
 }
 
 public sealed class BreakpointRemoveParams

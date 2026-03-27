@@ -68,6 +68,7 @@ public class RequestDispatcher
                 "breakpoint.disable" => await HandleBreakpointDisableAsync(request, ct),
                 "breakpoint.exception" => await HandleBreakpointExceptionAsync(request, ct),
 
+                "exec.run-to-cursor" => await HandleRunToCursorAsync(request, ct),
                 "exec.continue" => await HandleExecAsync(request, "continue", ct),
                 "exec.pause" => await HandleExecPauseAsync(request, ct),
                 "exec.step-over" => await HandleExecAsync(request, "next", ct),
@@ -177,14 +178,18 @@ public class RequestDispatcher
         string? condition = null;
         if (p.TryGetProperty("condition", out var cond))
             condition = cond.GetString();
+        string? logMessage = null;
+        if (p.TryGetProperty("logMessage", out var lm))
+            logMessage = lm.GetString();
 
-        var bp = _breakpoints.Add(file, line, condition);
+        var bp = _breakpoints.Add(file, line, condition, logMessage);
         await SyncBreakpointsForFileAsync(file, ct);
 
         var result = new BreakpointResult
         {
             Id = bp.Id, File = bp.File, Line = bp.Line,
-            Verified = bp.Verified, Enabled = bp.Enabled, Condition = bp.Condition, Message = bp.Message
+            Verified = bp.Verified, Enabled = bp.Enabled, Condition = bp.Condition, Message = bp.Message,
+            LogMessage = bp.LogMessage
         };
         return IpcResponse.Ok(request.Id, JsonSerializer.SerializeToElement(result, NdbJsonContext.Default.BreakpointResult));
     }
@@ -212,7 +217,8 @@ public class RequestDispatcher
             Breakpoints = all.Select(bp => new BreakpointResult
             {
                 Id = bp.Id, File = bp.File, Line = bp.Line,
-                Verified = bp.Verified, Enabled = bp.Enabled, Condition = bp.Condition, Message = bp.Message
+                Verified = bp.Verified, Enabled = bp.Enabled, Condition = bp.Condition, Message = bp.Message,
+                LogMessage = bp.LogMessage
             }).ToArray()
         };
         return IpcResponse.Ok(request.Id, JsonSerializer.SerializeToElement(result, NdbJsonContext.Default.BreakpointListResult));
@@ -280,7 +286,8 @@ public class RequestDispatcher
         var sourceBreakpoints = enabled.Select(bp => new SourceBreakpoint
         {
             Line = bp.Line,
-            Condition = bp.Condition
+            Condition = bp.Condition,
+            LogMessage = bp.LogMessage
         }).ToArray();
 
         var response = await _dap.SetBreakpointsAsync(file, sourceBreakpoints, ct);
@@ -380,6 +387,55 @@ public class RequestDispatcher
 
         var result = new ExecResult { Status = "paused" };
         return IpcResponse.Ok(request.Id, JsonSerializer.SerializeToElement(result, NdbJsonContext.Default.ExecResult));
+    }
+
+    private async Task<IpcResponse> HandleRunToCursorAsync(IpcRequest request, CancellationToken ct)
+    {
+        var p = request.Params!.Value;
+        var file = p.GetProperty("file").GetString()!;
+        var line = p.GetProperty("line").GetInt32();
+        int? timeout = null;
+        if (p.TryGetProperty("timeout", out var t)) timeout = t.GetInt32();
+
+        // 1. Add temporary breakpoint
+        var tempBp = _breakpoints.AddTemporary(file, line);
+        await SyncBreakpointsForFileAsync(file, ct);
+
+        // 2. Resolve thread and continue
+        var threadId = 0;
+        var threadsResp = await _dap.ThreadsAsync(ct);
+        if (threadsResp.Success && threadsResp.Body.HasValue)
+        {
+            var threads = threadsResp.Body.Value.Deserialize(DapJsonContext.Default.ThreadsResponseBody);
+            if (threads?.Threads.Length > 0)
+                threadId = threads.Threads[0].Id;
+        }
+
+        var contResp = await _dap.ContinueAsync(threadId, ct);
+        if (!contResp.Success)
+        {
+            // Cleanup temp breakpoint
+            _breakpoints.RemoveTemporary();
+            await SyncBreakpointsForFileAsync(file, ct);
+            return IpcResponse.Err(request.Id, -1, contResp.Message ?? "continue failed");
+        }
+
+        // 3. Wait for stopped
+        var timeoutSpan = timeout.HasValue ? TimeSpan.FromSeconds(timeout.Value) : TimeSpan.FromMinutes(10);
+        var stoppedEvent = await _dap.WaitForEventAsync("stopped", timeoutSpan, ct);
+
+        // 4. Remove temporary breakpoints
+        _breakpoints.RemoveTemporary();
+        await SyncBreakpointsForFileAsync(file, ct);
+
+        // 5. Return result
+        if (stoppedEvent is null)
+        {
+            var timeoutSec = timeout ?? 600;
+            return IpcResponse.Err(request.Id, -1, $"timeout after {timeoutSec}s, debuggee still running");
+        }
+
+        return BuildStoppedResult(request.Id, stoppedEvent);
     }
 
     private IpcResponse BuildStoppedResult(int requestId, DapEvent stoppedEvent)

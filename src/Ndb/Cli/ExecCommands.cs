@@ -20,6 +20,7 @@ public static class ExecCommands
         group.Add(CreateStepCommand("step-over", "Step over current line"));
         group.Add(CreateStepCommand("step-into", "Step into function call"));
         group.Add(CreateStepCommand("step-out", "Step out of current function"));
+        group.Add(CreateRunToCursor());
 
         return group;
     }
@@ -44,6 +45,30 @@ public static class ExecCommands
             var p = new ExecParams { ThreadId = threadId, Wait = wait, Timeout = timeout };
             var pJson = JsonSerializer.SerializeToElement(p, NdbJsonContext.Default.ExecParams);
             Environment.ExitCode = await DaemonConnector.SendCommandAsync($"exec.{name}", pJson);
+        });
+        return cmd;
+    }
+
+    private static Command CreateRunToCursor()
+    {
+        var fileArg = new Argument<string>("file") { Description = "Source file path" };
+        var lineArg = new Argument<int>("line") { Description = "Line number" };
+        var timeoutOption = new Option<int?>("--timeout") { Description = "Timeout in seconds" };
+
+        var cmd = new Command("run-to-cursor") { Description = "Run to a specific line and stop" };
+        cmd.Add(fileArg);
+        cmd.Add(lineArg);
+        cmd.Add(timeoutOption);
+
+        cmd.SetAction(async (ParseResult pr, CancellationToken ct) =>
+        {
+            var file = System.IO.Path.GetFullPath(pr.GetValue(fileArg)!);
+            var line = pr.GetValue(lineArg);
+            var timeout = pr.GetValue(timeoutOption);
+
+            var p = new RunToCursorParams { File = file, Line = line, Timeout = timeout };
+            var pJson = JsonSerializer.SerializeToElement(p, NdbJsonContext.Default.RunToCursorParams);
+            Environment.ExitCode = await DaemonConnector.SendCommandAsync("exec.run-to-cursor", pJson);
         });
         return cmd;
     }

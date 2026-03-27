@@ -41,6 +41,7 @@ namespace Ndb.Json;
 [JsonSerializable(typeof(InspectSourceResult))]
 [JsonSerializable(typeof(ExceptionFilterParams))]
 [JsonSerializable(typeof(ExceptionFilterResult))]
+[JsonSerializable(typeof(RunToCursorParams))]
 [JsonSerializable(typeof(string[]))]
 [JsonSerializable(typeof(Dictionary<string, string>))]
 [JsonSourceGenerationOptions(

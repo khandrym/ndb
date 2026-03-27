@@ -88,7 +88,7 @@ public static class AttachCommand
                 await Task.Delay(100, ct);
                 try
                 {
-                    var transport = new NamedPipeClientTransport(pipeName);
+                    var transport = TransportFactory.CreateClient(pipeName);
                     await using var _ = transport;
                     await transport.ConnectAsync();
 

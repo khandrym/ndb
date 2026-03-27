@@ -40,7 +40,7 @@ public class DaemonHost
 
         try
         {
-            var server = new NamedPipeServerTransport(_pipeName);
+            var server = TransportFactory.CreateServer(_pipeName);
             await using var _ = server;
 
             logger.Info("Waiting for first connection...");
@@ -84,7 +84,7 @@ public class DaemonHost
             logger.Info($"netcoredbg started, PID: {process.Id}");
 
             using var dap = new DapClient(process.StandardOutput.BaseStream, process.StandardInput.BaseStream);
-            var dispatcher = new RequestDispatcher(dap, logger);
+            var dispatcher = new RequestDispatcher(dap, logger, logPath);
 
             process.EnableRaisingEvents = true;
             process.Exited += (_, _) =>

@@ -22,7 +22,7 @@ public static class DaemonConnector
 
         try
         {
-            var transport = new NamedPipeClientTransport(session.Pipe);
+            var transport = TransportFactory.CreateClient(session.Pipe);
             await using var _ = transport;
             await transport.ConnectAsync();
 

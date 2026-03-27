@@ -53,6 +53,120 @@ public class DapClient : IDisposable
         return await SendRequestAsync("disconnect", argsJson, ct);
     }
 
+    public async Task<DapResponse> AttachAsync(int processId, CancellationToken ct = default)
+    {
+        var args = new AttachArguments { ProcessId = processId };
+        var argsJson = JsonSerializer.SerializeToElement(args, DapJsonContext.Default.AttachArguments);
+        return await SendRequestAsync("attach", argsJson, ct);
+    }
+
+    public async Task<DapResponse> SetBreakpointsAsync(string filePath, SourceBreakpoint[] breakpoints, CancellationToken ct = default)
+    {
+        var args = new SetBreakpointsArguments
+        {
+            Source = new Source { Path = filePath },
+            Breakpoints = breakpoints
+        };
+        var argsJson = JsonSerializer.SerializeToElement(args, DapJsonContext.Default.SetBreakpointsArguments);
+        return await SendRequestAsync("setBreakpoints", argsJson, ct);
+    }
+
+    public async Task<DapResponse> ContinueAsync(int threadId, CancellationToken ct = default)
+    {
+        var args = new ContinueArguments { ThreadId = threadId };
+        var argsJson = JsonSerializer.SerializeToElement(args, DapJsonContext.Default.ContinueArguments);
+        return await SendRequestAsync("continue", argsJson, ct);
+    }
+
+    public async Task<DapResponse> PauseAsync(int threadId, CancellationToken ct = default)
+    {
+        var args = new PauseArguments { ThreadId = threadId };
+        var argsJson = JsonSerializer.SerializeToElement(args, DapJsonContext.Default.PauseArguments);
+        return await SendRequestAsync("pause", argsJson, ct);
+    }
+
+    public async Task<DapResponse> NextAsync(int threadId, CancellationToken ct = default)
+    {
+        var args = new StepArguments { ThreadId = threadId };
+        var argsJson = JsonSerializer.SerializeToElement(args, DapJsonContext.Default.StepArguments);
+        return await SendRequestAsync("next", argsJson, ct);
+    }
+
+    public async Task<DapResponse> StepInAsync(int threadId, CancellationToken ct = default)
+    {
+        var args = new StepArguments { ThreadId = threadId };
+        var argsJson = JsonSerializer.SerializeToElement(args, DapJsonContext.Default.StepArguments);
+        return await SendRequestAsync("stepIn", argsJson, ct);
+    }
+
+    public async Task<DapResponse> StepOutAsync(int threadId, CancellationToken ct = default)
+    {
+        var args = new StepArguments { ThreadId = threadId };
+        var argsJson = JsonSerializer.SerializeToElement(args, DapJsonContext.Default.StepArguments);
+        return await SendRequestAsync("stepOut", argsJson, ct);
+    }
+
+    public async Task<DapResponse> StackTraceAsync(int threadId, CancellationToken ct = default)
+    {
+        var args = new StackTraceArguments { ThreadId = threadId };
+        var argsJson = JsonSerializer.SerializeToElement(args, DapJsonContext.Default.StackTraceArguments);
+        return await SendRequestAsync("stackTrace", argsJson, ct);
+    }
+
+    public async Task<DapResponse> ThreadsAsync(CancellationToken ct = default)
+    {
+        return await SendRequestAsync("threads", null, ct);
+    }
+
+    public async Task<DapResponse> ScopesAsync(int frameId, CancellationToken ct = default)
+    {
+        var args = new ScopesArguments { FrameId = frameId };
+        var argsJson = JsonSerializer.SerializeToElement(args, DapJsonContext.Default.ScopesArguments);
+        return await SendRequestAsync("scopes", argsJson, ct);
+    }
+
+    public async Task<DapResponse> VariablesAsync(int variablesReference, CancellationToken ct = default)
+    {
+        var args = new VariablesArguments { VariablesReference = variablesReference };
+        var argsJson = JsonSerializer.SerializeToElement(args, DapJsonContext.Default.VariablesArguments);
+        return await SendRequestAsync("variables", argsJson, ct);
+    }
+
+    public async Task<DapResponse> EvaluateAsync(string expression, int frameId, CancellationToken ct = default)
+    {
+        var args = new EvaluateArguments { Expression = expression, FrameId = frameId };
+        var argsJson = JsonSerializer.SerializeToElement(args, DapJsonContext.Default.EvaluateArguments);
+        return await SendRequestAsync("evaluate", argsJson, ct);
+    }
+
+    /// <summary>
+    /// Waits for a specific event type. Returns null on timeout.
+    /// Checks already-buffered events first, then polls.
+    /// </summary>
+    public async Task<DapEvent?> WaitForEventAsync(string eventName, TimeSpan timeout, CancellationToken ct = default)
+    {
+        using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        cts.CancelAfter(timeout);
+
+        try
+        {
+            while (!cts.Token.IsCancellationRequested)
+            {
+                lock (_events)
+                {
+                    for (int i = _events.Count - 1; i >= 0; i--)
+                    {
+                        if (_events[i].Event == eventName)
+                            return _events[i];
+                    }
+                }
+                await Task.Delay(50, cts.Token);
+            }
+        }
+        catch (OperationCanceledException) { }
+        return null;
+    }
+
     public DapEvent? TryGetEvent(string eventName)
     {
         lock (_events)

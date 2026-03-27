@@ -54,17 +54,30 @@ public static class InspectCommands
     {
         var frameOption = new Option<int?>("--frame") { Description = "Frame ID (default: top frame)" };
         var scopeOption = new Option<int?>("--scope") { Description = "Scope index (default: first scope)" };
+        var expandOption = new Option<int?>("--expand") { Description = "Expand a variablesReference" };
         var cmd = new Command("variables") { Description = "Show variables in scope" };
         cmd.Add(frameOption);
         cmd.Add(scopeOption);
+        cmd.Add(expandOption);
 
         cmd.SetAction(async (ParseResult pr, CancellationToken ct) =>
         {
-            var frameId = pr.GetValue(frameOption);
-            var scopeIndex = pr.GetValue(scopeOption);
-            var p = new InspectVariablesParams { FrameId = frameId, ScopeIndex = scopeIndex };
-            var pJson = JsonSerializer.SerializeToElement(p, NdbJsonContext.Default.InspectVariablesParams);
-            Environment.ExitCode = await DaemonConnector.SendCommandAsync("inspect.variables", pJson);
+            var expandRef = pr.GetValue(expandOption);
+
+            if (expandRef.HasValue)
+            {
+                var ep = new InspectExpandParams { VariablesReference = expandRef.Value };
+                var epJson = JsonSerializer.SerializeToElement(ep, NdbJsonContext.Default.InspectExpandParams);
+                Environment.ExitCode = await DaemonConnector.SendCommandAsync("inspect.variables", epJson);
+            }
+            else
+            {
+                var frameId = pr.GetValue(frameOption);
+                var scopeIndex = pr.GetValue(scopeOption);
+                var p = new InspectVariablesParams { FrameId = frameId, ScopeIndex = scopeIndex };
+                var pJson = JsonSerializer.SerializeToElement(p, NdbJsonContext.Default.InspectVariablesParams);
+                Environment.ExitCode = await DaemonConnector.SendCommandAsync("inspect.variables", pJson);
+            }
         });
         return cmd;
     }

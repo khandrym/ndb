@@ -73,6 +73,19 @@ public sealed class VarResult
     [JsonPropertyName("type")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? Type { get; init; }
+
+    [JsonPropertyName("expandable")]
+    public bool Expandable { get; init; }
+
+    [JsonPropertyName("ref")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public int Ref { get; init; }
+}
+
+public sealed class InspectExpandParams
+{
+    [JsonPropertyName("variablesReference")]
+    public int VariablesReference { get; init; }
 }
 
 public sealed class InspectEvaluateParams

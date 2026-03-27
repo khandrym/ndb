@@ -273,6 +273,18 @@ public class RequestDispatcher
             if (p.TryGetProperty("timeout", out var t)) timeout = t.GetInt32();
         }
 
+        // Step commands require a valid thread ID — resolve first thread if not specified
+        if (threadId == 0 && dapCommand != "continue")
+        {
+            var threadsResp = await _dap.ThreadsAsync(ct);
+            if (threadsResp.Success && threadsResp.Body.HasValue)
+            {
+                var threads = threadsResp.Body.Value.Deserialize(DapJsonContext.Default.ThreadsResponseBody);
+                if (threads?.Threads.Length > 0)
+                    threadId = threads.Threads[0].Id;
+            }
+        }
+
         DapResponse dapResponse;
         switch (dapCommand)
         {

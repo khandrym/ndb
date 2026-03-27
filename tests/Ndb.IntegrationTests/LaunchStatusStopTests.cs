@@ -80,6 +80,7 @@ public static class TestHelpers
     }
 }
 
+[Collection("Sequential")]
 public class LaunchStatusStopTests : IAsyncLifetime
 {
     public async Task InitializeAsync()

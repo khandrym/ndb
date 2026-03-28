@@ -24,6 +24,7 @@ public class RequestDispatcher
     private string[] _exceptionFilters = [];
     private int _lastProcessedBreakpointEventIndex;
     private bool _isAttached;
+    private int _lastStoppedThreadId;
 
     public RequestDispatcher(DapClient dap, FileLogger logger, string? logPath = null)
     {
@@ -91,6 +92,25 @@ public class RequestDispatcher
             _logger.Error($"Dispatch error: {ex.Message}");
             return IpcResponse.Err(request.Id, -1, ex.Message);
         }
+    }
+
+    private async Task<int> ResolveThreadIdAsync(int requestedThreadId, CancellationToken ct)
+    {
+        if (requestedThreadId != 0)
+            return requestedThreadId;
+
+        if (_lastStoppedThreadId != 0)
+            return _lastStoppedThreadId;
+
+        var threadsResp = await _dap.ThreadsAsync(ct);
+        if (threadsResp.Success && threadsResp.Body.HasValue)
+        {
+            var threads = threadsResp.Body.Value.Deserialize(DapJsonContext.Default.ThreadsResponseBody);
+            if (threads?.Threads.Length > 0)
+                return threads.Threads[0].Id;
+        }
+
+        return 0;
     }
 
     // --- Session ---
@@ -394,17 +414,9 @@ public class RequestDispatcher
             if (p.TryGetProperty("timeout", out var t)) timeout = t.GetInt32();
         }
 
-        // Step commands require a valid thread ID — resolve first thread if not specified
+        // Step commands require a valid thread ID
         if (threadId == 0 && dapCommand != "continue")
-        {
-            var threadsResp = await _dap.ThreadsAsync(ct);
-            if (threadsResp.Success && threadsResp.Body.HasValue)
-            {
-                var threads = threadsResp.Body.Value.Deserialize(DapJsonContext.Default.ThreadsResponseBody);
-                if (threads?.Threads.Length > 0)
-                    threadId = threads.Threads[0].Id;
-            }
-        }
+            threadId = await ResolveThreadIdAsync(threadId, ct);
 
         DapResponse dapResponse;
         switch (dapCommand)
@@ -427,6 +439,9 @@ public class RequestDispatcher
 
         if (!dapResponse.Success)
             return IpcResponse.Err(request.Id, -1, dapResponse.Message ?? $"{dapCommand} failed");
+
+        if (dapCommand == "continue")
+            _lastStoppedThreadId = 0;
 
         if (!wait)
         {
@@ -453,17 +468,8 @@ public class RequestDispatcher
         if (request.Params.HasValue && request.Params.Value.TryGetProperty("threadId", out var tid))
             threadId = tid.GetInt32();
 
-        // Resolve thread ID if not specified — same as step commands
         if (threadId == 0)
-        {
-            var threadsResp = await _dap.ThreadsAsync(ct);
-            if (threadsResp.Success && threadsResp.Body.HasValue)
-            {
-                var threads = threadsResp.Body.Value.Deserialize(DapJsonContext.Default.ThreadsResponseBody);
-                if (threads?.Threads.Length > 0)
-                    threadId = threads.Threads[0].Id;
-            }
-        }
+            threadId = await ResolveThreadIdAsync(threadId, ct);
 
         var response = await _dap.PauseAsync(threadId, ct);
         if (!response.Success)
@@ -486,14 +492,7 @@ public class RequestDispatcher
         await SyncBreakpointsForFileAsync(file, ct);
 
         // 2. Resolve thread and continue
-        var threadId = 0;
-        var threadsResp = await _dap.ThreadsAsync(ct);
-        if (threadsResp.Success && threadsResp.Body.HasValue)
-        {
-            var threads = threadsResp.Body.Value.Deserialize(DapJsonContext.Default.ThreadsResponseBody);
-            if (threads?.Threads.Length > 0)
-                threadId = threads.Threads[0].Id;
-        }
+        var threadId = await ResolveThreadIdAsync(0, ct);
 
         var contResp = await _dap.ContinueAsync(threadId, ct);
         if (!contResp.Success)
@@ -534,6 +533,9 @@ public class RequestDispatcher
             if (body.TryGetProperty("reason", out var r)) reason = r.GetString() ?? "unknown";
             if (body.TryGetProperty("threadId", out var t)) threadId = t.GetInt32();
         }
+
+        if (threadId.HasValue)
+            _lastStoppedThreadId = threadId.Value;
 
         // Auto-fetch top frame for convenience
         if (threadId.HasValue)
@@ -577,17 +579,8 @@ public class RequestDispatcher
         if (request.Params.HasValue && request.Params.Value.TryGetProperty("threadId", out var tid))
             threadId = tid.GetInt32();
 
-        // If threadId is 0, get threads and use the first one
         if (threadId == 0)
-        {
-            var threadsResp = await _dap.ThreadsAsync(ct);
-            if (threadsResp.Success && threadsResp.Body.HasValue)
-            {
-                var threads = threadsResp.Body.Value.Deserialize(DapJsonContext.Default.ThreadsResponseBody);
-                if (threads?.Threads.Length > 0)
-                    threadId = threads.Threads[0].Id;
-            }
-        }
+            threadId = await ResolveThreadIdAsync(threadId, ct);
 
         var response = await _dap.StackTraceAsync(threadId, ct);
         if (!response.Success)
@@ -644,16 +637,18 @@ public class RequestDispatcher
             return BuildVariablesResult(request.Id, vars);
         }
 
-        // Standard mode: resolve frame → scopes → variables
+        // Standard mode: resolve thread → frame → scopes → variables
+        int requestedThreadId = 0;
+        if (request.Params.HasValue && request.Params.Value.TryGetProperty("threadId", out var tidProp))
+            requestedThreadId = tidProp.GetInt32();
+
         if (!frameId.HasValue)
         {
-            var threadsResp = await _dap.ThreadsAsync(ct);
-            var threads = threadsResp.Body?.Deserialize(DapJsonContext.Default.ThreadsResponseBody);
-            var firstThread = threads?.Threads.FirstOrDefault();
-            if (firstThread is null)
+            var resolvedThreadId = await ResolveThreadIdAsync(requestedThreadId, ct);
+            if (resolvedThreadId == 0)
                 return IpcResponse.Err(request.Id, -1, "no threads available");
 
-            var stResp = await _dap.StackTraceAsync(firstThread.Id, ct);
+            var stResp = await _dap.StackTraceAsync(resolvedThreadId, ct);
             var st = stResp.Body?.Deserialize(DapJsonContext.Default.StackTraceResponseBody);
             var topFrame = st?.StackFrames.FirstOrDefault();
             if (topFrame is null)
@@ -703,15 +698,17 @@ public class RequestDispatcher
         var frameId = 0;
         if (p.TryGetProperty("frameId", out var fid)) frameId = fid.GetInt32();
 
-        // If no frameId, get top frame
+        // If no frameId, resolve thread and get top frame
+        int requestedThreadId = 0;
+        if (p.TryGetProperty("threadId", out var tidProp))
+            requestedThreadId = tidProp.GetInt32();
+
         if (frameId == 0)
         {
-            var threadsResp = await _dap.ThreadsAsync(ct);
-            var threads = threadsResp.Body?.Deserialize(DapJsonContext.Default.ThreadsResponseBody);
-            var firstThread = threads?.Threads.FirstOrDefault();
-            if (firstThread is not null)
+            var resolvedThreadId = await ResolveThreadIdAsync(requestedThreadId, ct);
+            if (resolvedThreadId != 0)
             {
-                var stResp = await _dap.StackTraceAsync(firstThread.Id, ct);
+                var stResp = await _dap.StackTraceAsync(resolvedThreadId, ct);
                 var st = stResp.Body?.Deserialize(DapJsonContext.Default.StackTraceResponseBody);
                 var topFrame = st?.StackFrames.FirstOrDefault();
                 if (topFrame is not null) frameId = topFrame.Id;

@@ -76,7 +76,7 @@ ndb stop
 |---|---|
 | `ndb launch <dll> [--stop-on-entry] [--breakpoint file:line] [--env KEY=VALUE] [--args ...] [--cwd] [--verbose] [--session name]` | Launch app under debugger |
 | `ndb attach --pid <PID> [--session name]` | Attach to running process |
-| `ndb stop [--session name]` | Stop debug session |
+| `ndb stop [--detach] [--terminate] [--session name]` | Stop debug session (attach sessions detach by default, launch sessions terminate) |
 | `ndb status [--session name]` | Show session status (or list all sessions) |
 | `ndb setup` | Download and install netcoredbg |
 | `ndb version` | Show ndb version |

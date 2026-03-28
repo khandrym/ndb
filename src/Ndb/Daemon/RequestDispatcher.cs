@@ -23,6 +23,7 @@ public class RequestDispatcher
     private int? _exitCode;
     private string[] _exceptionFilters = [];
     private int _lastProcessedBreakpointEventIndex;
+    private bool _isAttached;
 
     public RequestDispatcher(DapClient dap, FileLogger logger, string? logPath = null)
     {
@@ -162,6 +163,7 @@ public class RequestDispatcher
         if (!attachResponse.Success)
             return IpcResponse.Err(request.Id, -1, attachResponse.Message ?? "attach failed");
 
+        _isAttached = true;
         await _dap.ConfigurationDoneAsync(ct);
 
         var result = new CommandStatusData { Status = "attached" };
@@ -170,12 +172,20 @@ public class RequestDispatcher
 
     private async Task<IpcResponse> HandleStopAsync(IpcRequest request, CancellationToken ct)
     {
+        // Default: terminate for launch, detach for attach
+        // Can be overridden via explicit "terminate" parameter
+        var terminate = !_isAttached;
+        if (request.Params.HasValue && request.Params.Value.TryGetProperty("terminate", out var t))
+            terminate = t.GetBoolean();
+
         if (!_terminated)
         {
-            try { await _dap.DisconnectAsync(terminateDebuggee: true, ct); }
+            try { await _dap.DisconnectAsync(terminateDebuggee: terminate, ct); }
             catch { /* best effort */ }
         }
-        var result = new CommandStatusData { Status = "stopped" };
+
+        var status = terminate ? "stopped" : "detached";
+        var result = new CommandStatusData { Status = status };
         return IpcResponse.Ok(request.Id, JsonSerializer.SerializeToElement(result, NdbJsonContext.Default.CommandStatusData));
     }
 

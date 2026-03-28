@@ -15,7 +15,7 @@ namespace Ndb.Daemon;
 
 public class RequestDispatcher
 {
-    private readonly DapClient _dap;
+    private readonly IDapClient _dap;
     private readonly FileLogger _logger;
     private readonly string? _logPath;
     private readonly BreakpointManager _breakpoints = new();
@@ -26,7 +26,7 @@ public class RequestDispatcher
     private bool _isAttached;
     private int _lastStoppedThreadId;
 
-    public RequestDispatcher(DapClient dap, FileLogger logger, string? logPath = null)
+    public RequestDispatcher(IDapClient dap, FileLogger logger, string? logPath = null)
     {
         _dap = dap;
         _logger = logger;

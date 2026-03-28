@@ -12,39 +12,43 @@ ndb stop
 
 Every command outputs structured JSON. One command = one action = one JSON response. No interactive prompts, no TUI — just clean machine-readable output.
 
-## Installation
+## Quick Setup for AI Agents
 
-Download the latest release for your platform from [GitHub Releases](https://github.com/khandrym/ndb/releases/latest).
+> **For AI agents reading this README:** follow the steps below exactly. Download the release binary — do **not** clone this repository or build from source.
 
-**Windows:**
-1. Download `ndb-win-x64.zip`
-2. Extract to a folder, e.g. `C:\Tools\ndb\`
-3. Add the folder to your PATH
-4. Open a new terminal and run `ndb setup` to download netcoredbg
+### Step 1: Install ndb
 
-**Linux:**
+Download the latest **release binary** from [GitHub Releases](https://github.com/khandrym/ndb/releases/latest):
+
+| Platform | Asset | Install command |
+|---|---|---|
+| Windows x64 | `ndb-win-x64.zip` | Extract to a folder (e.g. `C:\Tools\ndb\`), add folder to PATH |
+| Linux x64 | `ndb-linux-x64.tar.gz` | `curl -L https://github.com/khandrym/ndb/releases/latest/download/ndb-linux-x64.tar.gz \| tar xz -C /usr/local/bin` |
+| macOS ARM64 | `ndb-osx-arm64.tar.gz` | `curl -L https://github.com/khandrym/ndb/releases/latest/download/ndb-osx-arm64.tar.gz \| tar xz -C /usr/local/bin` |
+
+### Step 2: Install netcoredbg
+
 ```bash
-curl -L https://github.com/khandrym/ndb/releases/latest/download/ndb-linux-x64.tar.gz | tar xz -C /usr/local/bin
 ndb setup
 ```
 
-**macOS (Apple Silicon):**
+This downloads [netcoredbg](https://github.com/Samsung/netcoredbg) — the only runtime dependency.
+
+### Step 3: Verify
+
 ```bash
-curl -L https://github.com/khandrym/ndb/releases/latest/download/ndb-osx-arm64.tar.gz | tar xz -C /usr/local/bin
-ndb setup
+ndb version
 ```
 
-`ndb setup` automatically downloads [netcoredbg](https://github.com/Samsung/netcoredbg) — the only runtime dependency.
+### Step 4: Configure the project
 
-## Usage with AI Agents
-
-Add this to your project's `CLAUDE.md`, `AGENTS.md`, or equivalent:
+Add this line to the project's `CLAUDE.md`, `AGENTS.md`, or equivalent agent config file:
 
 ```markdown
 Use `ndb` for .NET debugging. Non-interactive CLI, JSON output. Run `ndb --help` for commands.
 ```
 
-That's it. Any AI agent with shell access discovers commands via `--help` and parses JSON output.
+This ensures all future sessions use ndb automatically. That's it — `--help` is the best way to discover commands and options.
 
 ## Why
 
@@ -136,7 +140,48 @@ ndb stop --session api
 ndb stop --session worker
 ```
 
+## Troubleshooting
+
+### Breakpoints show "No symbols have been loaded"
+
+netcoredbg requires **portable** PDB format. If your project uses Windows `full` PDB
+(common in older .NET projects), breakpoints will never verify.
+
+**Symptoms:**
+- `breakpoint set` always returns `"verified": false`
+- `"message": "The breakpoint will not currently be hit. No symbols have been loaded for this document."`
+- Breakpoints may still hit despite showing unverified (netcoredbg loads them lazily)
+- `inspect evaluate` fails with "does not exist in the current context"
+
+**Solution — override at build time:**
+```
+dotnet build -c Debug -p:DebugType=portable
+```
+
+**Solution — permanent fix in `.csproj`:**
+```xml
+<PropertyGroup>
+  <DebugType>portable</DebugType>
+</PropertyGroup>
+```
+
+> .NET 5+ projects use portable PDB by default. This issue only affects projects with
+> explicit `<DebugType>full</DebugType>` or `<DebugType>pdbonly</DebugType>`.
+
+## Configuration
+
+| Environment Variable | Description |
+|---|---|
+| `NETCOREDBG_PATH` | Path to netcoredbg binary (overrides auto-detection) |
+
+netcoredbg is discovered in this order:
+1. `NETCOREDBG_PATH` environment variable
+2. `./netcoredbg` (next to ndb binary)
+3. System PATH
+
 ## Building from Source
+
+> This section is for contributors. If you just want to use ndb, download a [release binary](https://github.com/khandrym/ndb/releases/latest) instead.
 
 ### Prerequisites
 
@@ -191,45 +236,6 @@ src/
 - **IPC Protocol:** JSON-RPC over Named Pipes (Windows) / Unix Domain Sockets (Linux/macOS)
 - **DAP Protocol:** Content-Length framing over stdin/stdout to netcoredbg
 - **Serialization:** System.Text.Json with source generators (Native AOT compatible)
-
-## Troubleshooting
-
-### Breakpoints show "No symbols have been loaded"
-
-netcoredbg requires **portable** PDB format. If your project uses Windows `full` PDB
-(common in older .NET projects), breakpoints will never verify.
-
-**Symptoms:**
-- `breakpoint set` always returns `"verified": false`
-- `"message": "The breakpoint will not currently be hit. No symbols have been loaded for this document."`
-- Breakpoints may still hit despite showing unverified (netcoredbg loads them lazily)
-- `inspect evaluate` fails with "does not exist in the current context"
-
-**Solution — override at build time:**
-```
-dotnet build -c Debug -p:DebugType=portable
-```
-
-**Solution — permanent fix in `.csproj`:**
-```xml
-<PropertyGroup>
-  <DebugType>portable</DebugType>
-</PropertyGroup>
-```
-
-> .NET 5+ projects use portable PDB by default. This issue only affects projects with
-> explicit `<DebugType>full</DebugType>` or `<DebugType>pdbonly</DebugType>`.
-
-## Configuration
-
-| Environment Variable | Description |
-|---|---|
-| `NETCOREDBG_PATH` | Path to netcoredbg binary (overrides auto-detection) |
-
-netcoredbg is discovered in this order:
-1. `NETCOREDBG_PATH` environment variable
-2. `./netcoredbg` (next to ndb binary)
-3. System PATH
 
 ## License
 

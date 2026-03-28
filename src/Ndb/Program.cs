@@ -23,7 +23,8 @@ rootCommand.Add(InspectCommands.Create());
 var versionCommand = new Command("version", "Show ndb version");
 versionCommand.SetAction(async (ParseResult _, CancellationToken _) =>
 {
-    var version = typeof(LaunchCommand).Assembly.GetName().Version?.ToString() ?? "dev";
+    var av = typeof(LaunchCommand).Assembly.GetName().Version;
+    var version = av is null ? "dev" : $"{av.Major}.{av.Minor}.{av.Build}";
     var response = NdbResponse.Ok("version",
         JsonSerializer.SerializeToElement(new VersionData { Version = version }, NdbJsonContext.Default.VersionData));
     Console.WriteLine(JsonSerializer.Serialize(response, NdbJsonContext.Default.NdbResponse));

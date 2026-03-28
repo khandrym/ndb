@@ -64,11 +64,13 @@ public static class InspectCommands
         var frameOption = new Option<int?>("--frame") { Description = "Frame ID (default: top frame)" };
         var scopeOption = new Option<int?>("--scope") { Description = "Scope index (default: first scope)" };
         var expandOption = new Option<int?>("--expand") { Description = "Expand a variablesReference" };
+        var threadOption = new Option<int>("--thread") { Description = "Thread ID (0 = last stopped thread)" };
         var sessionOption = DaemonConnector.CreateSessionOption();
         var cmd = new Command("variables") { Description = "Show variables in scope" };
         cmd.Add(frameOption);
         cmd.Add(scopeOption);
         cmd.Add(expandOption);
+        cmd.Add(threadOption);
         cmd.Add(sessionOption);
 
         cmd.SetAction(async (ParseResult pr, CancellationToken ct) =>
@@ -87,7 +89,8 @@ public static class InspectCommands
             {
                 var frameId = pr.GetValue(frameOption);
                 var scopeIndex = pr.GetValue(scopeOption);
-                var p = new InspectVariablesParams { FrameId = frameId, ScopeIndex = scopeIndex };
+                var threadId = pr.GetValue(threadOption);
+                var p = new InspectVariablesParams { FrameId = frameId, ScopeIndex = scopeIndex, ThreadId = threadId };
                 var pJson = JsonSerializer.SerializeToElement(p, NdbJsonContext.Default.InspectVariablesParams);
                 Environment.ExitCode = await DaemonConnector.SendCommandAsync("inspect.variables", pJson, session);
             }
@@ -99,19 +102,22 @@ public static class InspectCommands
     {
         var exprArg = new Argument<string>("expression") { Description = "Expression to evaluate" };
         var frameOption = new Option<int>("--frame") { Description = "Frame ID (default: top frame)" };
+        var threadOption = new Option<int>("--thread") { Description = "Thread ID (0 = last stopped thread)" };
         var sessionOption = DaemonConnector.CreateSessionOption();
         var cmd = new Command("evaluate") { Description = "Evaluate an expression" };
         cmd.Add(exprArg);
         cmd.Add(frameOption);
+        cmd.Add(threadOption);
         cmd.Add(sessionOption);
 
         cmd.SetAction(async (ParseResult pr, CancellationToken ct) =>
         {
             var expression = pr.GetValue(exprArg)!;
             var frameId = pr.GetValue(frameOption);
+            var threadId = pr.GetValue(threadOption);
             var session = pr.GetValue(sessionOption);
             if (string.IsNullOrEmpty(session)) session = "default";
-            var p = new InspectEvaluateParams { Expression = expression, FrameId = frameId };
+            var p = new InspectEvaluateParams { Expression = expression, FrameId = frameId, ThreadId = threadId };
             var pJson = JsonSerializer.SerializeToElement(p, NdbJsonContext.Default.InspectEvaluateParams);
             Environment.ExitCode = await DaemonConnector.SendCommandAsync("inspect.evaluate", pJson, session);
         });

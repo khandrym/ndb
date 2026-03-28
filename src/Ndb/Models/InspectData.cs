@@ -47,6 +47,9 @@ public sealed class ThreadResult
 
 public sealed class InspectVariablesParams
 {
+    [JsonPropertyName("threadId")]
+    public int ThreadId { get; init; }
+
     [JsonPropertyName("frameId")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public int? FrameId { get; init; }
@@ -95,6 +98,9 @@ public sealed class InspectEvaluateParams
 
     [JsonPropertyName("frameId")]
     public int FrameId { get; init; }
+
+    [JsonPropertyName("threadId")]
+    public int ThreadId { get; init; }
 }
 
 public sealed class InspectEvaluateResult

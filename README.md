@@ -24,13 +24,15 @@ Once ndb is set up, ask your agent:
 
 ### Step 1: Install ndb
 
-Download the latest **release binary** from [GitHub Releases](https://github.com/khandrym/ndb/releases/latest):
+Download the latest **release binary** for the current platform from [GitHub Releases](https://github.com/khandrym/ndb/releases/latest):
 
-| Platform | Asset | Install command |
-|---|---|---|
-| Windows x64 | `ndb-win-x64.zip` | Extract to a folder (e.g. `C:\Tools\ndb\`), add folder to PATH |
-| Linux x64 | `ndb-linux-x64.tar.gz` | `curl -L https://github.com/khandrym/ndb/releases/latest/download/ndb-linux-x64.tar.gz \| tar xz -C /usr/local/bin` |
-| macOS ARM64 | `ndb-osx-arm64.tar.gz` | `curl -L https://github.com/khandrym/ndb/releases/latest/download/ndb-osx-arm64.tar.gz \| tar xz -C /usr/local/bin` |
+| Platform | Asset |
+|---|---|
+| Windows x64 | `ndb-win-x64.zip` |
+| Linux x64 | `ndb-linux-x64.tar.gz` |
+| macOS ARM64 | `ndb-osx-arm64.tar.gz` |
+
+Extract and ensure `ndb` is available in PATH. Ask the user where to install if unsure.
 
 ### Step 2: Install netcoredbg
 
@@ -46,15 +48,15 @@ This downloads [netcoredbg](https://github.com/Samsung/netcoredbg) — the only 
 ndb version
 ```
 
-### Step 4: Configure the project
+### Step 4: Configure the project (optional)
 
-Add this line to the project's `CLAUDE.md`, `AGENTS.md`, or equivalent agent config file:
+To ensure future sessions use ndb automatically, suggest adding this line to the project's `CLAUDE.md`, `AGENTS.md`, or equivalent agent config file:
 
 ```markdown
 Use `ndb` for .NET debugging. Non-interactive CLI, JSON output. Run `ndb --help` for commands.
 ```
 
-This ensures all future sessions use ndb automatically. That's it — `--help` is the best way to discover commands and options.
+Confirm with the user before modifying project config files.
 
 ## Commands
 

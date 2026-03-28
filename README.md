@@ -80,6 +80,7 @@ ndb stop
 | `ndb status [--session name]` | Show session status (or list all sessions) |
 | `ndb setup` | Download and install netcoredbg |
 | `ndb version` | Show ndb version |
+| `ndb check-update` | Check for newer ndb version on GitHub |
 
 ### Breakpoints
 

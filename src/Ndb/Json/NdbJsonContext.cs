@@ -49,6 +49,7 @@ namespace Ndb.Json;
 [JsonSerializable(typeof(SessionSummary))]
 [JsonSerializable(typeof(string[]))]
 [JsonSerializable(typeof(Dictionary<string, string>))]
+[JsonSerializable(typeof(CheckUpdateData))]
 [JsonSourceGenerationOptions(
     PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase,
     DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull)]

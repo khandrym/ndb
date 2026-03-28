@@ -36,6 +36,16 @@ ndb setup
 
 `ndb setup` automatically downloads [netcoredbg](https://github.com/Samsung/netcoredbg) — the only runtime dependency.
 
+## Usage with AI Agents
+
+Add this to your project's `CLAUDE.md`, `AGENTS.md`, or equivalent:
+
+```markdown
+Use `ndb` for .NET debugging. Non-interactive CLI, JSON output. Run `ndb --help` for commands.
+```
+
+That's it. Any AI agent with shell access discovers commands via `--help` and parses JSON output.
+
 ## Why
 
 AI agents (Claude Code, Codex, Copilot, etc.) need to debug .NET applications but can't use interactive debuggers like Visual Studio. ndb gives them a non-interactive CLI that speaks JSON, with a daemon that keeps the debug session alive between commands.
@@ -146,46 +156,6 @@ ndb breakpoint set Api.cs 42 --session api
 ndb inspect variables --session worker
 ndb stop --session api
 ndb stop --session worker
-```
-
-## Usage with AI Agents
-
-ndb is designed for AI agents that have shell/bash access. The agent doesn't need any special SDK or plugin — just the ability to run CLI commands and parse JSON output.
-
-Add this to your project's `CLAUDE.md`, `AGENTS.md`, or equivalent:
-
-```markdown
-Use `ndb` for .NET debugging. Non-interactive CLI, JSON output. Run `ndb --help` for commands.
-```
-
-### Debugging Workflow for Agents
-
-A typical AI agent debugging session:
-
-```bash
-# 1. Build the project
-dotnet build
-
-# 2. Start debugging with stop-on-entry
-ndb launch bin/Debug/net10.0/MyApp.dll --stop-on-entry
-
-# 3. Set breakpoint where the bug might be
-ndb breakpoint set Controllers/UserController.cs 87
-
-# 4. Continue to the breakpoint
-ndb exec continue --wait --timeout 60
-
-# 5. Inspect state at breakpoint
-ndb inspect stacktrace
-ndb inspect variables
-ndb inspect evaluate "users.Count"
-
-# 6. Step through code
-ndb exec step-over --wait
-ndb inspect variables
-
-# 7. Done
-ndb stop
 ```
 
 ## Building from Source

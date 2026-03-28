@@ -50,6 +50,14 @@ Use `ndb` for .NET debugging. Non-interactive CLI, JSON output. Run `ndb --help`
 
 This ensures all future sessions use ndb automatically. That's it — `--help` is the best way to discover commands and options.
 
+### Start Debugging
+
+Once ndb is set up, ask your agent:
+
+- `Debug why MyApp crashes on startup using ndb`
+- `Use ndb to find why the API returns 500 on /users`
+- `Set a breakpoint at Program.cs:42 and inspect the config variable`
+
 ## Commands
 
 Every command outputs structured JSON. One command = one action = one JSON response. No interactive prompts, no TUI — just clean machine-readable output.

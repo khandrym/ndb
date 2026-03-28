@@ -4,6 +4,7 @@
     <TargetFramework>net10.0</TargetFramework>
     <PublishAot>true</PublishAot>
     <InvariantGlobalization>true</InvariantGlobalization>
+    <Version>1.0.0</Version>
     <RootNamespace>Ndb</RootNamespace>
     <Nullable>enable</Nullable>
   </PropertyGroup>

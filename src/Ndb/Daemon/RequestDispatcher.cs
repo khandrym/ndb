@@ -22,6 +22,7 @@ public class RequestDispatcher
     private bool _terminated;
     private int? _exitCode;
     private string[] _exceptionFilters = [];
+    private int _lastProcessedBreakpointEventIndex;
 
     public RequestDispatcher(DapClient dap, FileLogger logger, string? logPath = null)
     {
@@ -119,7 +120,29 @@ public class RequestDispatcher
         if (!launchResponse.Success)
             return IpcResponse.Err(request.Id, -1, launchResponse.Message ?? "launch failed");
 
+        // Set breakpoints BEFORE configurationDone so early lines can be hit
+        BreakpointSpec[]? breakpointSpecs = null;
+        if (request.Params.HasValue && request.Params.Value.TryGetProperty("breakpoints", out var bps))
+            breakpointSpecs = bps.Deserialize(NdbJsonContext.Default.BreakpointSpecArray);
+
+        if (breakpointSpecs?.Length > 0)
+        {
+            foreach (var bpSpec in breakpointSpecs)
+                _breakpoints.Add(bpSpec.File, bpSpec.Line, bpSpec.Condition);
+
+            var files = breakpointSpecs.Select(b => b.File).Distinct(StringComparer.OrdinalIgnoreCase);
+            foreach (var file in files)
+                await SyncBreakpointsForFileAsync(file, ct);
+        }
+
         await _dap.ConfigurationDoneAsync(ct);
+
+        if (launchArgs.StopAtEntry)
+        {
+            var stoppedEvent = await _dap.WaitForEventAsync("stopped", TimeSpan.FromSeconds(10), ct);
+            if (stoppedEvent is not null)
+                return await BuildStoppedResultAsync(request.Id, stoppedEvent, ct);
+        }
 
         var result = new CommandStatusData { Status = "running" };
         return IpcResponse.Ok(request.Id, JsonSerializer.SerializeToElement(result, NdbJsonContext.Default.CommandStatusData));
@@ -184,6 +207,7 @@ public class RequestDispatcher
 
         var bp = _breakpoints.Add(file, line, condition, logMessage);
         await SyncBreakpointsForFileAsync(file, ct);
+        ProcessBreakpointEvents();
 
         var result = new BreakpointResult
         {
@@ -211,6 +235,7 @@ public class RequestDispatcher
 
     private IpcResponse HandleBreakpointList(IpcRequest request)
     {
+        ProcessBreakpointEvents();
         var all = _breakpoints.GetAll();
         var result = new BreakpointListResult
         {
@@ -226,6 +251,7 @@ public class RequestDispatcher
 
     private async Task<IpcResponse> HandleBreakpointEnableAsync(IpcRequest request, CancellationToken ct)
     {
+        ProcessBreakpointEvents();
         var id = request.Params!.Value.GetProperty("id").GetInt32();
         if (!_breakpoints.Enable(id))
             return IpcResponse.Err(request.Id, -1, $"breakpoint {id} not found");
@@ -239,6 +265,7 @@ public class RequestDispatcher
 
     private async Task<IpcResponse> HandleBreakpointDisableAsync(IpcRequest request, CancellationToken ct)
     {
+        ProcessBreakpointEvents();
         var id = request.Params!.Value.GetProperty("id").GetInt32();
         if (!_breakpoints.Disable(id))
             return IpcResponse.Err(request.Id, -1, $"breakpoint {id} not found");
@@ -280,6 +307,35 @@ public class RequestDispatcher
         return IpcResponse.Ok(request.Id, JsonSerializer.SerializeToElement(result, NdbJsonContext.Default.ExceptionFilterResult));
     }
 
+    private void ProcessBreakpointEvents()
+    {
+        var events = _dap.Events;
+        for (int i = _lastProcessedBreakpointEventIndex; i < events.Count; i++)
+        {
+            var evt = events[i];
+            if (evt.Event != "breakpoint") continue;
+            if (!evt.Body.HasValue) continue;
+
+            var body = evt.Body.Value;
+            if (!body.TryGetProperty("breakpoint", out var bpElement)) continue;
+
+            var verified = bpElement.TryGetProperty("verified", out var v) && v.GetBoolean();
+            var line = bpElement.TryGetProperty("line", out var l) ? l.GetInt32() : 0;
+            string? file = null;
+            if (bpElement.TryGetProperty("source", out var s) && s.TryGetProperty("path", out var p))
+                file = p.GetString();
+            string? message = bpElement.TryGetProperty("message", out var m) ? m.GetString() : null;
+
+            if (file != null && line > 0)
+            {
+                _breakpoints.UpdateVerified(file, line, verified);
+                if (message != null)
+                    _breakpoints.UpdateMessage(file, line, message);
+            }
+        }
+        _lastProcessedBreakpointEventIndex = events.Count;
+    }
+
     private async Task SyncBreakpointsForFileAsync(string file, CancellationToken ct)
     {
         var enabled = _breakpoints.GetEnabledForFile(file);
@@ -301,6 +357,12 @@ public class RequestDispatcher
                 {
                     _breakpoints.UpdateVerified(file, bpInfo.Line, bpInfo.Verified);
                     _breakpoints.UpdateMessage(file, bpInfo.Line, bpInfo.Message);
+
+                    if (!bpInfo.Verified && bpInfo.Message?.Contains("No symbols", StringComparison.OrdinalIgnoreCase) == true)
+                    {
+                        _logger.Info($"Breakpoint at {file}:{bpInfo.Line} unverified: {bpInfo.Message}. " +
+                            "If the module has loaded, ensure the project uses <DebugType>portable</DebugType>.");
+                    }
                 }
             }
         }
@@ -372,7 +434,7 @@ public class RequestDispatcher
             return IpcResponse.Err(request.Id, -1, $"timeout after {timeoutSec}s, debuggee still running");
         }
 
-        return BuildStoppedResult(request.Id, stoppedEvent);
+        return await BuildStoppedResultAsync(request.Id, stoppedEvent, ct);
     }
 
     private async Task<IpcResponse> HandleExecPauseAsync(IpcRequest request, CancellationToken ct)
@@ -380,6 +442,18 @@ public class RequestDispatcher
         var threadId = 0;
         if (request.Params.HasValue && request.Params.Value.TryGetProperty("threadId", out var tid))
             threadId = tid.GetInt32();
+
+        // Resolve thread ID if not specified — same as step commands
+        if (threadId == 0)
+        {
+            var threadsResp = await _dap.ThreadsAsync(ct);
+            if (threadsResp.Success && threadsResp.Body.HasValue)
+            {
+                var threads = threadsResp.Body.Value.Deserialize(DapJsonContext.Default.ThreadsResponseBody);
+                if (threads?.Threads.Length > 0)
+                    threadId = threads.Threads[0].Id;
+            }
+        }
 
         var response = await _dap.PauseAsync(threadId, ct);
         if (!response.Success)
@@ -435,10 +509,10 @@ public class RequestDispatcher
             return IpcResponse.Err(request.Id, -1, $"timeout after {timeoutSec}s, debuggee still running");
         }
 
-        return BuildStoppedResult(request.Id, stoppedEvent);
+        return await BuildStoppedResultAsync(request.Id, stoppedEvent, ct);
     }
 
-    private IpcResponse BuildStoppedResult(int requestId, DapEvent stoppedEvent)
+    private async Task<IpcResponse> BuildStoppedResultAsync(int requestId, DapEvent stoppedEvent, CancellationToken ct)
     {
         var reason = "unknown";
         int? threadId = null;
@@ -449,6 +523,30 @@ public class RequestDispatcher
             var body = stoppedEvent.Body.Value;
             if (body.TryGetProperty("reason", out var r)) reason = r.GetString() ?? "unknown";
             if (body.TryGetProperty("threadId", out var t)) threadId = t.GetInt32();
+        }
+
+        // Auto-fetch top frame for convenience
+        if (threadId.HasValue)
+        {
+            try
+            {
+                var stResp = await _dap.StackTraceAsync(threadId.Value, ct);
+                if (stResp.Success && stResp.Body.HasValue)
+                {
+                    var st = stResp.Body.Value.Deserialize(DapJsonContext.Default.StackTraceResponseBody);
+                    var topFrame = st?.StackFrames.FirstOrDefault();
+                    if (topFrame is not null)
+                    {
+                        frame = new FrameSummary
+                        {
+                            Name = topFrame.Name,
+                            File = topFrame.Source?.Path,
+                            Line = topFrame.Line
+                        };
+                    }
+                }
+            }
+            catch { /* best effort — don't fail the stop result */ }
         }
 
         var result = new ExecResult

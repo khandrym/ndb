@@ -80,11 +80,12 @@ Single binary. CLI and daemon are the same executable — no version mismatch po
 
 | Command | Description |
 |---|---|
-| `ndb launch <dll> [--stop-on-entry] [--args ...] [--cwd] [--verbose] [--session name]` | Launch app under debugger |
+| `ndb launch <dll> [--stop-on-entry] [--breakpoint file:line] [--env KEY=VALUE] [--args ...] [--cwd] [--verbose] [--session name]` | Launch app under debugger |
 | `ndb attach --pid <PID> [--session name]` | Attach to running process |
 | `ndb stop [--session name]` | Stop debug session |
 | `ndb status [--session name]` | Show session status (or list all sessions) |
 | `ndb setup` | Download and install netcoredbg |
+| `ndb version` | Show ndb version |
 
 ### Breakpoints
 
@@ -190,6 +191,34 @@ src/
 - **IPC Protocol:** JSON-RPC over Named Pipes (Windows) / Unix Domain Sockets (Linux/macOS)
 - **DAP Protocol:** Content-Length framing over stdin/stdout to netcoredbg
 - **Serialization:** System.Text.Json with source generators (Native AOT compatible)
+
+## Troubleshooting
+
+### Breakpoints show "No symbols have been loaded"
+
+netcoredbg requires **portable** PDB format. If your project uses Windows `full` PDB
+(common in older .NET projects), breakpoints will never verify.
+
+**Symptoms:**
+- `breakpoint set` always returns `"verified": false`
+- `"message": "The breakpoint will not currently be hit. No symbols have been loaded for this document."`
+- Breakpoints may still hit despite showing unverified (netcoredbg loads them lazily)
+- `inspect evaluate` fails with "does not exist in the current context"
+
+**Solution — override at build time:**
+```
+dotnet build -c Debug -p:DebugType=portable
+```
+
+**Solution — permanent fix in `.csproj`:**
+```xml
+<PropertyGroup>
+  <DebugType>portable</DebugType>
+</PropertyGroup>
+```
+
+> .NET 5+ projects use portable PDB by default. This issue only affects projects with
+> explicit `<DebugType>full</DebugType>` or `<DebugType>pdbonly</DebugType>`.
 
 ## Configuration
 

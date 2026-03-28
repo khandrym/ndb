@@ -105,6 +105,21 @@ public static class SetupCommand
                     tar?.WaitForExit();
                 }
 
+                // Flatten nested directory — Samsung's archive contains a "netcoredbg/" subfolder
+                var nestedDir = Path.Combine(extractDir, "netcoredbg");
+                if (Directory.Exists(nestedDir))
+                {
+                    foreach (var file in Directory.GetFiles(nestedDir))
+                        File.Move(file, Path.Combine(extractDir, Path.GetFileName(file)), overwrite: true);
+                    foreach (var dir in Directory.GetDirectories(nestedDir))
+                    {
+                        var target = Path.Combine(extractDir, Path.GetFileName(dir));
+                        if (Directory.Exists(target)) Directory.Delete(target, true);
+                        Directory.Move(dir, target);
+                    }
+                    Directory.Delete(nestedDir, recursive: true);
+                }
+
                 File.Delete(tempPath);
 
                 var finalPath = File.Exists(Path.Combine(extractDir, exeName))

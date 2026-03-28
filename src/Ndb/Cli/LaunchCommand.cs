@@ -1,7 +1,9 @@
 using System;
+using System.Collections.Generic;
 using System.CommandLine;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -21,12 +23,14 @@ public static class LaunchCommand
         var cwdOption = new Option<string?>("--cwd") { Description = "Working directory for the debuggee" };
         var verboseOption = new Option<bool>("--verbose") { Description = "Enable debug logging in daemon" };
         var stopOnEntryOption = new Option<bool>("--stop-on-entry") { Description = "Break at entry point" };
+        var breakpointOption = new Option<string[]>("--breakpoint", "-b") { Description = "Set breakpoint before execution starts (format: file:line)", AllowMultipleArgumentsPerToken = true };
+        var envOption = new Option<string[]>("--env", "-e") { Description = "Environment variable (KEY=VALUE format, repeatable)", AllowMultipleArgumentsPerToken = true };
 
         var sessionOption = DaemonConnector.CreateSessionOption();
 
         var command = new Command("launch", "Launch a .NET app under the debugger")
         {
-            dllArg, argsOption, cwdOption, verboseOption, stopOnEntryOption, sessionOption
+            dllArg, argsOption, cwdOption, verboseOption, stopOnEntryOption, breakpointOption, envOption, sessionOption
         };
 
         command.SetAction(async (ParseResult parseResult, CancellationToken ct) =>
@@ -36,6 +40,8 @@ public static class LaunchCommand
             var cwd = parseResult.GetValue(cwdOption);
             var verbose = parseResult.GetValue(verboseOption);
             var stopOnEntry = parseResult.GetValue(stopOnEntryOption);
+            var breakpointArgs = parseResult.GetValue(breakpointOption) ?? Array.Empty<string>();
+            var envArgs = parseResult.GetValue(envOption) ?? Array.Empty<string>();
             var session = parseResult.GetValue(sessionOption);
             if (string.IsNullOrEmpty(session)) session = "default";
 
@@ -112,12 +118,42 @@ public static class LaunchCommand
                     await using var _ = transport;
                     await transport.ConnectAsync();
 
+                    // Parse breakpoint specs (format: file:line)
+                    BreakpointSpec[]? breakpoints = null;
+                    if (breakpointArgs.Length > 0)
+                    {
+                        breakpoints = breakpointArgs.Select(b =>
+                        {
+                            var lastColon = b.LastIndexOf(':');
+                            return new BreakpointSpec
+                            {
+                                File = Path.GetFullPath(b[..lastColon]),
+                                Line = int.Parse(b[(lastColon + 1)..])
+                            };
+                        }).ToArray();
+                    }
+
+                    // Parse environment variables (format: KEY=VALUE)
+                    Dictionary<string, string>? env = null;
+                    if (envArgs.Length > 0)
+                    {
+                        env = new Dictionary<string, string>();
+                        foreach (var kv in envArgs)
+                        {
+                            var idx = kv.IndexOf('=');
+                            if (idx > 0)
+                                env[kv[..idx]] = kv[(idx + 1)..];
+                        }
+                    }
+
                     var launchParams = new LaunchParams
                     {
                         Program = dllPath,
                         Args = cmdArgs.Length > 0 ? cmdArgs : null,
                         Cwd = cwd,
-                        StopOnEntry = stopOnEntry
+                        StopOnEntry = stopOnEntry,
+                        Breakpoints = breakpoints,
+                        Env = env
                     };
                     var request = new IpcRequest
                     {

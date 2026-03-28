@@ -136,7 +136,16 @@ public class DaemonHost
 
             if (!process.HasExited)
             {
-                try { process.Kill(); } catch { }
+                try
+                {
+                    // Give netcoredbg time to detach cleanly
+                    if (!process.WaitForExit(5000))
+                    {
+                        logger.Info("netcoredbg did not exit in 5s, killing");
+                        process.Kill();
+                    }
+                }
+                catch { }
             }
         }
         finally

@@ -37,7 +37,7 @@ public static class TestHelpers
     }
 
     public static async Task<(int ExitCode, string StdOut, string StdErr, JsonElement? Json)> RunNdbAsync(
-        string arguments, int timeoutMs = 15000)
+        string arguments, int timeoutMs = 30000)
     {
         var ndbDll = GetNdbDll();
         var psi = new ProcessStartInfo

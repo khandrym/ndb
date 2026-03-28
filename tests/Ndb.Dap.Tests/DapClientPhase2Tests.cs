@@ -56,17 +56,17 @@ public class DapClientPhase2Tests
     }
 
     [Fact]
-    public async Task WaitForEventAsync_ReturnsEvent_WhenAlreadyBuffered()
+    public async Task WaitForEventAsync_IgnoresPreExistingEvents()
     {
+        // Event arrives before WaitForEventAsync is called — should be ignored (stale)
         var stoppedEvent = """{"seq":1,"type":"event","event":"stopped","body":{"reason":"breakpoint","threadId":1}}""";
         var (client, _) = await CreateClientWithResponses(stoppedEvent);
 
         await Task.Delay(100); // Let read loop pick up event
 
-        var evt = await client.WaitForEventAsync("stopped", TimeSpan.FromSeconds(5));
+        var evt = await client.WaitForEventAsync("stopped", TimeSpan.FromMilliseconds(200));
 
-        Assert.NotNull(evt);
-        Assert.Equal("stopped", evt!.Event);
+        Assert.Null(evt); // Pre-existing event is ignored
     }
 
     [Fact]

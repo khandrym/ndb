@@ -147,11 +147,14 @@ public class DapClient : IDisposable
     }
 
     /// <summary>
-    /// Waits for a specific event type. Returns null on timeout.
-    /// Checks already-buffered events first, then polls.
+    /// Waits for a specific event type that arrives AFTER this method is called.
+    /// Returns null on timeout. Does not return stale events from before the call.
     /// </summary>
     public async Task<DapEvent?> WaitForEventAsync(string eventName, TimeSpan timeout, CancellationToken ct = default)
     {
+        int startIndex;
+        lock (_events) { startIndex = _events.Count; }
+
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
         cts.CancelAfter(timeout);
 
@@ -161,7 +164,7 @@ public class DapClient : IDisposable
             {
                 lock (_events)
                 {
-                    for (int i = _events.Count - 1; i >= 0; i--)
+                    for (int i = startIndex; i < _events.Count; i++)
                     {
                         if (_events[i].Event == eventName)
                             return _events[i];

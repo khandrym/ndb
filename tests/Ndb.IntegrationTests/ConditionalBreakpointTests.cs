@@ -30,7 +30,7 @@ public class ConditionalBreakpointTests : IAsyncLifetime
         await Task.Delay(500);
     }
 
-    [Fact(Skip = "Flaky on CI: conditional breakpoints in top-level statements may not evaluate correctly")]
+    [Fact]
     public async Task ConditionalBreakpoint_OnlyHitsWhenConditionTrue()
     {
         await TestHelpers.RunNdbAsync("stop");
@@ -58,7 +58,7 @@ public class ConditionalBreakpointTests : IAsyncLifetime
         Assert.True(bps.GetArrayLength() > 0);
 
         // Continue — should hit conditional breakpoint
-        var cont = await TestHelpers.RunNdbAsync("exec continue --wait --timeout 10", timeoutMs: 30000);
+        var cont = await TestHelpers.RunNdbAsync("exec continue --wait --timeout 30", timeoutMs: 60000);
         Assert.True(cont.Json!.Value.GetProperty("success").GetBoolean(),
             $"Continue failed: {cont.StdOut} {cont.StdErr}");
         Assert.Equal("stopped", cont.Json.Value.GetProperty("data").GetProperty("status").GetString());

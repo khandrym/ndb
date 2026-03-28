@@ -43,7 +43,7 @@ public class DaemonHost
         try
         {
             var server = TransportFactory.CreateServer(_pipeName);
-            await using var _ = server;
+            await using var _server = server;
 
             logger.Info("Waiting for first connection...");
             var firstClientStream = await server.AcceptAsync(ct);
@@ -99,30 +99,39 @@ public class DaemonHost
             await SendResponseAsync(firstClientStream, response);
             firstClientStream.Dispose();
 
-            while (!ct.IsCancellationRequested)
+            var stopCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+
+            while (!stopCts.Token.IsCancellationRequested)
             {
                 logger.Debug("Waiting for next connection...");
                 Stream clientStream;
-                try { clientStream = await server.AcceptAsync(ct); }
+                try { clientStream = await server.AcceptAsync(stopCts.Token); }
                 catch (OperationCanceledException) { break; }
 
-                try
+                // Handle each request concurrently so --wait doesn't block new connections
+                _ = Task.Run(async () =>
                 {
-                    var request = await ReadRequestAsync(clientStream, ct);
-                    if (request is null) { clientStream.Dispose(); continue; }
-
-                    logger.Debug($"Received: {request.Method}");
-                    var resp = await dispatcher.DispatchAsync(request, ct);
-                    await SendResponseAsync(clientStream, resp);
-
-                    if (request.Method == "stop")
+                    try
                     {
-                        logger.Info("Stop requested, shutting down");
-                        clientStream.Dispose();
-                        break;
+                        var request = await ReadRequestAsync(clientStream, ct);
+                        if (request is null) { clientStream.Dispose(); return; }
+
+                        logger.Debug($"Received: {request.Method}");
+                        var resp = await dispatcher.DispatchAsync(request, ct);
+                        await SendResponseAsync(clientStream, resp);
+
+                        if (request.Method == "stop")
+                        {
+                            logger.Info("Stop requested, shutting down");
+                            stopCts.Cancel();
+                        }
                     }
-                }
-                finally { clientStream.Dispose(); }
+                    catch (Exception ex)
+                    {
+                        logger.Error($"Request handling error: {ex.Message}");
+                    }
+                    finally { clientStream.Dispose(); }
+                }, stopCts.Token);
             }
 
             if (!process.HasExited)

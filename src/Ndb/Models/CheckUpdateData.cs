@@ -13,6 +13,14 @@ public sealed class CheckUpdateData
     [JsonPropertyName("updateAvailable")]
     public bool UpdateAvailable { get; init; }
 
+    [JsonPropertyName("updateUrl")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? UpdateUrl { get; init; }
+
+    [JsonPropertyName("hint")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? Hint { get; init; }
+
     [JsonPropertyName("error")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? Error { get; init; }

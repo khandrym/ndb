@@ -60,6 +60,8 @@ checkUpdateCommand.SetAction(async (ParseResult _, CancellationToken ct) =>
         Current = current,
         Latest = latest,
         UpdateAvailable = updateAvailable,
+        UpdateUrl = updateAvailable ? "https://github.com/khandrym/ndb" : null,
+        Hint = updateAvailable ? "Read the Setup Instructions in README to download and install the latest version." : null,
         Error = error
     };
     var response = NdbResponse.Ok("check-update",

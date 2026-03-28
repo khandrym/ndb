@@ -56,7 +56,7 @@ To ensure future sessions use ndb automatically, suggest adding this line to the
 Use `ndb` for .NET debugging. Non-interactive CLI, JSON output. Run `ndb --help` for commands.
 ```
 
-Confirm with the user before modifying project config files.
+Confirm with the user before modifying project config files, if necessary.
 
 ## Commands
 

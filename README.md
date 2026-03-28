@@ -12,18 +12,6 @@ Install and configure ndb for .NET debugging: https://github.com/khandrym/ndb
 
 The agent will read this README, download the release, install everything, and configure your project automatically.
 
----
-
-```
-ndb launch MyApp.dll --stop-on-entry
-ndb breakpoint set Program.cs 42
-ndb exec continue --wait --timeout 30
-ndb inspect variables
-ndb stop
-```
-
-Every command outputs structured JSON. One command = one action = one JSON response. No interactive prompts, no TUI — just clean machine-readable output.
-
 ## Setup Instructions for AI Agents
 
 > **For AI agents reading this README:** follow the steps below exactly. Download the release binary — do **not** clone this repository or build from source.
@@ -91,6 +79,16 @@ ndb <any command>
 Single binary. CLI and daemon are the same executable — no version mismatch possible.
 
 ## Commands
+
+Every command outputs structured JSON. One command = one action = one JSON response. No interactive prompts, no TUI — just clean machine-readable output.
+
+```bash
+ndb launch MyApp.dll --stop-on-entry
+ndb breakpoint set Program.cs 42
+ndb exec continue --wait --timeout 30
+ndb inspect variables
+ndb stop
+```
 
 ### Session
 

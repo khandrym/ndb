@@ -7,7 +7,7 @@ namespace Ndb.Dap;
 /// DAP client — sends requests to a debug adapter (netcoredbg) and reads responses/events.
 /// Thread-safe: reading runs on a background task, writing is synchronized.
 /// </summary>
-public class DapClient : IDisposable
+public class DapClient : IDapClient, IDisposable
 {
     private readonly Stream _input;   // read from adapter (stdout)
     private readonly Stream _output;  // write to adapter (stdin)

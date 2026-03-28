@@ -9,7 +9,8 @@ namespace Ndb.IntegrationTests;
 
 public static class TestHelpers
 {
-    private static readonly string NetcoredbgPath = @"D:\ANDRII\WORK\PROGRAMMING\03_AI\ndb\src\Ndb\bin\Debug\net10.0\netcoredbg\netcoredbg\netcoredbg.exe";
+    private static readonly string NetcoredbgPath = Environment.GetEnvironmentVariable("NETCOREDBG_PATH")
+        ?? Path.Combine(FindSolutionDir(), "src", "Ndb", "bin", "Debug", "net10.0", "netcoredbg", "netcoredbg", "netcoredbg.exe");
 
     public static string FindSolutionDir()
     {

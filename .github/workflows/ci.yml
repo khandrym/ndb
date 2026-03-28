@@ -31,12 +31,20 @@ jobs:
           dotnet test tests/Ndb.Dap.Tests --no-build -v n
 
       - name: Download netcoredbg
+        shell: pwsh
         run: |
-          dotnet run --project src/Ndb -- setup
-        env:
-          DOTNET_NOLOGO: true
+          $output = dotnet run --project src/Ndb -- setup 2>&1
+          Write-Host $output
+          # Extract installed path from JSON output
+          $json = $output | Where-Object { $_ -match '^\{' } | ConvertFrom-Json
+          if ($json.success -and $json.data.path) {
+            $path = $json.data.path
+            Write-Host "netcoredbg path: $path"
+            "NETCOREDBG_PATH=$path" | Out-File -Append $env:GITHUB_ENV
+          } else {
+            Write-Host "Setup output: $output"
+            exit 1
+          }
 
       - name: Integration Tests
         run: dotnet test tests/Ndb.IntegrationTests --no-build -v n -- RunConfiguration.TestSessionTimeout=120000
-        env:
-          NETCOREDBG_PATH: ${{ github.workspace }}/src/Ndb/bin/Debug/net10.0/netcoredbg/netcoredbg/netcoredbg.exe

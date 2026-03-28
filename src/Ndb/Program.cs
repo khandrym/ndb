@@ -34,7 +34,8 @@ rootCommand.Add(versionCommand);
 var checkUpdateCommand = new Command("check-update", "Check for newer ndb version on GitHub");
 checkUpdateCommand.SetAction(async (ParseResult _, CancellationToken ct) =>
 {
-    var current = typeof(LaunchCommand).Assembly.GetName().Version?.ToString() ?? "dev";
+    var v = typeof(LaunchCommand).Assembly.GetName().Version;
+    var current = v is null ? "dev" : $"{v.Major}.{v.Minor}.{v.Build}";
 
     string? latest = null;
     string? error = null;

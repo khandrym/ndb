@@ -8,7 +8,6 @@ public sealed class CheckUpdateData
     public string Current { get; init; } = "";
 
     [JsonPropertyName("latest")]
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? Latest { get; init; }
 
     [JsonPropertyName("updateAvailable")]

@@ -152,80 +152,10 @@ ndb stop --session worker
 
 ndb is designed for AI agents that have shell/bash access. The agent doesn't need any special SDK or plugin — just the ability to run CLI commands and parse JSON output.
 
-### Claude Code
-
-Add to your project's `CLAUDE.md`:
+Add this to your project's `CLAUDE.md`, `AGENTS.md`, or equivalent:
 
 ```markdown
-## Debugging .NET
-
-Use `ndb` for debugging. It's a one-shot CLI — each command prints JSON to stdout.
-
-Typical workflow:
-1. `ndb launch bin/Debug/net10.0/MyApp.dll --stop-on-entry` — start debugging
-2. `ndb breakpoint set Program.cs 42` — set breakpoint
-3. `ndb exec continue --wait --timeout 30` — run until breakpoint hit
-4. `ndb inspect stacktrace` — see where you are
-5. `ndb inspect variables` — see local variables
-6. `ndb inspect evaluate "myVar.ToString()"` — evaluate expression
-7. `ndb exec step-over --wait` — step to next line
-8. `ndb stop` — end session
-
-All output is JSON: `{"success": true, "command": "...", "data": {...}}`
-```
-
-### Codex (OpenAI)
-
-Add to your project's `AGENTS.md`:
-
-```markdown
-## Debugging .NET
-
-Use `ndb` CLI for debugging .NET applications. Each command is non-interactive and outputs JSON to stdout.
-
-### Available commands
-
-- `ndb launch <dll> [--stop-on-entry]` — start debugging
-- `ndb attach --pid <PID>` — attach to running process
-- `ndb stop` — stop debug session
-- `ndb status` — show session info
-- `ndb breakpoint set <file> <line> [--condition <expr>]` — set breakpoint
-- `ndb breakpoint remove <file> <line>` — remove breakpoint
-- `ndb breakpoint list` — list all breakpoints
-- `ndb exec continue [--wait] [--timeout <sec>]` — resume execution
-- `ndb exec step-over [--wait]` — step over
-- `ndb exec step-into [--wait]` — step into
-- `ndb exec step-out [--wait]` — step out
-- `ndb exec run-to-cursor <file> <line>` — run to line
-- `ndb inspect stacktrace` — call stack
-- `ndb inspect variables` — local variables
-- `ndb inspect evaluate <expr>` — evaluate expression
-- `ndb inspect threads` — list threads
-- `ndb inspect source <file> [--line <n>] [--count <n>]` — view source
-
-### Output format
-
-All commands return JSON: `{"success": bool, "command": "...", "data": {...}}` or `{"success": false, "error": "..."}`.
-
-### Typical debugging session
-
-1. Build: `dotnet build`
-2. Launch: `ndb launch bin/Debug/net10.0/App.dll --stop-on-entry`
-3. Set breakpoint: `ndb breakpoint set Program.cs 42`
-4. Continue: `ndb exec continue --wait --timeout 30`
-5. Inspect: `ndb inspect variables`
-6. Stop: `ndb stop`
-```
-
-### Other AI Agents (Copilot, Cursor, etc.)
-
-Any agent that can execute shell commands and read stdout works with ndb. No configuration needed — just ensure `ndb` is in PATH and run commands. The `--help` flag on any command provides usage info:
-
-```bash
-ndb --help
-ndb breakpoint --help
-ndb exec --help
-ndb inspect --help
+Use `ndb` for .NET debugging. Non-interactive CLI, JSON output. Run `ndb --help` for commands.
 ```
 
 ### Debugging Workflow for Agents

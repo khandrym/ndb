@@ -74,29 +74,6 @@ ndb <any command>
 
 Single binary. CLI and daemon are the same executable — no version mismatch possible.
 
-## Quick Start
-
-```bash
-# 1. Install (or build from source)
-ndb setup    # downloads netcoredbg automatically
-
-# 2. Debug
-ndb launch bin/Debug/net10.0/MyApp.dll --stop-on-entry
-ndb inspect stacktrace
-ndb exec step-over --wait
-ndb inspect variables
-ndb stop
-```
-
-## Output Format
-
-All commands return JSON to stdout:
-
-```json
-{"success": true, "command": "inspect.stacktrace", "data": {"frames": [...]}}
-{"success": false, "command": "launch", "error": "netcoredbg not found, run 'ndb setup' to install"}
-```
-
 ## Commands
 
 ### Session
@@ -189,7 +166,8 @@ dotnet publish src/Ndb/Ndb.csproj -c Release -r win-x64 /p:PublishAot=true -o pu
 
 ```bash
 # Unit tests
-dotnet test tests/Ndb.Tests tests/Ndb.Dap.Tests
+dotnet test tests/Ndb.Tests
+dotnet test tests/Ndb.Dap.Tests
 
 # Integration tests (requires netcoredbg)
 NETCOREDBG_PATH=/path/to/netcoredbg dotnet test tests/Ndb.IntegrationTests

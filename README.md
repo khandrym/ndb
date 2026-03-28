@@ -2,6 +2,18 @@
 
 One-shot CLI for .NET debugging. Built for AI agents.
 
+## Get Started
+
+Paste this into your AI agent chat (Claude Code, Codex, etc.):
+
+```
+Install and configure ndb for .NET debugging: https://github.com/khandrym/ndb
+```
+
+The agent will read this README, download the release, install everything, and configure your project automatically.
+
+---
+
 ```
 ndb launch MyApp.dll --stop-on-entry
 ndb breakpoint set Program.cs 42
@@ -12,7 +24,7 @@ ndb stop
 
 Every command outputs structured JSON. One command = one action = one JSON response. No interactive prompts, no TUI — just clean machine-readable output.
 
-## Quick Setup for AI Agents
+## Setup Instructions for AI Agents
 
 > **For AI agents reading this README:** follow the steps below exactly. Download the release binary — do **not** clone this repository or build from source.
 

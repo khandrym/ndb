@@ -50,34 +50,6 @@ Use `ndb` for .NET debugging. Non-interactive CLI, JSON output. Run `ndb --help`
 
 This ensures all future sessions use ndb automatically. That's it — `--help` is the best way to discover commands and options.
 
-## Why
-
-AI agents (Claude Code, Codex, Copilot, etc.) need to debug .NET applications but can't use interactive debuggers like Visual Studio. ndb gives them a non-interactive CLI that speaks JSON, with a daemon that keeps the debug session alive between commands.
-
-## How It Works
-
-```
-ndb launch app.dll
-    |
-    +-- spawns daemon (background process)
-    |       |
-    |       +-- IPC server (Named Pipe / Unix Socket)
-    |       |
-    |       +-- DAP client --> netcoredbg --> .NET App
-    |
-    +-- sends launch command via IPC
-    +-- prints JSON result
-    +-- exits
-
-ndb <any command>
-    |
-    +-- connects to daemon via IPC
-    +-- sends command, gets response
-    +-- prints JSON, exits
-```
-
-Single binary. CLI and daemon are the same executable — no version mismatch possible.
-
 ## Commands
 
 Every command outputs structured JSON. One command = one action = one JSON response. No interactive prompts, no TUI — just clean machine-readable output.
@@ -188,6 +160,34 @@ netcoredbg is discovered in this order:
 1. `NETCOREDBG_PATH` environment variable
 2. `./netcoredbg` (next to ndb binary)
 3. System PATH
+
+## Why
+
+AI agents (Claude Code, Codex, Copilot, etc.) need to debug .NET applications but can't use interactive debuggers like Visual Studio. ndb gives them a non-interactive CLI that speaks JSON, with a daemon that keeps the debug session alive between commands.
+
+## How It Works
+
+```
+ndb launch app.dll
+    |
+    +-- spawns daemon (background process)
+    |       |
+    |       +-- IPC server (Named Pipe / Unix Socket)
+    |       |
+    |       +-- DAP client --> netcoredbg --> .NET App
+    |
+    +-- sends launch command via IPC
+    +-- prints JSON result
+    +-- exits
+
+ndb <any command>
+    |
+    +-- connects to daemon via IPC
+    +-- sends command, gets response
+    +-- prints JSON, exits
+```
+
+Single binary. CLI and daemon are the same executable — no version mismatch possible.
 
 ## Building from Source
 

@@ -20,7 +20,7 @@ Once ndb is set up, ask your agent:
 
 ## Setup Instructions for AI Agents
 
-> **For AI agents reading this README:** follow the steps below exactly. Download the release binary — do **not** clone this repository or build from source.
+> **For AI agents:** the recommended way to install ndb is to download a pre-built release binary. Building from source is only needed for development — see [Building from Source](#building-from-source).
 
 ### Step 1: Install ndb
 

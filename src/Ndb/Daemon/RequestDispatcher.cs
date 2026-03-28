@@ -319,7 +319,7 @@ public class RequestDispatcher
             if (p.TryGetProperty("filter", out var f)) filter = f.GetString();
         }
 
-        if (clear)
+        if (clear || string.Equals(filter, "none", StringComparison.OrdinalIgnoreCase))
         {
             _exceptionFilters = [];
         }

@@ -12,6 +12,30 @@ ndb stop
 
 Every command outputs structured JSON. One command = one action = one JSON response. No interactive prompts, no TUI — just clean machine-readable output.
 
+## Installation
+
+Download the latest release for your platform from [GitHub Releases](https://github.com/khandrym/ndb/releases/latest).
+
+**Windows:**
+1. Download `ndb-win-x64.zip`
+2. Extract to a folder, e.g. `C:\Tools\ndb\`
+3. Add the folder to your PATH
+4. Open a new terminal and run `ndb setup` to download netcoredbg
+
+**Linux:**
+```bash
+curl -L https://github.com/khandrym/ndb/releases/latest/download/ndb-linux-x64.tar.gz | tar xz -C /usr/local/bin
+ndb setup
+```
+
+**macOS (Apple Silicon):**
+```bash
+curl -L https://github.com/khandrym/ndb/releases/latest/download/ndb-osx-arm64.tar.gz | tar xz -C /usr/local/bin
+ndb setup
+```
+
+`ndb setup` automatically downloads [netcoredbg](https://github.com/Samsung/netcoredbg) — the only runtime dependency.
+
 ## Why
 
 AI agents (Claude Code, Codex, Copilot, etc.) need to debug .NET applications but can't use interactive debuggers like Visual Studio. ndb gives them a non-interactive CLI that speaks JSON, with a daemon that keeps the debug session alive between commands.

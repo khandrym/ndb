@@ -37,6 +37,6 @@ jobs:
           DOTNET_NOLOGO: true
 
       - name: Integration Tests
-        run: dotnet test tests/Ndb.IntegrationTests --no-build -v n --timeout 120000
+        run: dotnet test tests/Ndb.IntegrationTests --no-build -v n -- RunConfiguration.TestSessionTimeout=120000
         env:
           NETCOREDBG_PATH: ${{ github.workspace }}/src/Ndb/bin/Debug/net10.0/netcoredbg/netcoredbg/netcoredbg.exe

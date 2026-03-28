@@ -148,6 +148,73 @@ ndb stop --session api
 ndb stop --session worker
 ```
 
+## Usage with AI Agents
+
+ndb is designed for AI agents that have shell/bash access. The agent doesn't need any special SDK or plugin — just the ability to run CLI commands and parse JSON output.
+
+### Claude Code
+
+Add to your project's `CLAUDE.md`:
+
+```markdown
+## Debugging .NET
+
+Use `ndb` for debugging. It's a one-shot CLI — each command prints JSON to stdout.
+
+Typical workflow:
+1. `ndb launch bin/Debug/net10.0/MyApp.dll --stop-on-entry` — start debugging
+2. `ndb breakpoint set Program.cs 42` — set breakpoint
+3. `ndb exec continue --wait --timeout 30` — run until breakpoint hit
+4. `ndb inspect stacktrace` — see where you are
+5. `ndb inspect variables` — see local variables
+6. `ndb inspect evaluate "myVar.ToString()"` — evaluate expression
+7. `ndb exec step-over --wait` — step to next line
+8. `ndb stop` — end session
+
+All output is JSON: `{"success": true, "command": "...", "data": {...}}`
+```
+
+### Other AI Agents (Codex, Copilot, Cursor, etc.)
+
+Any agent that can execute shell commands and read stdout works with ndb. No configuration needed — just ensure `ndb` is in PATH and run commands. The `--help` flag on any command provides usage info:
+
+```bash
+ndb --help
+ndb breakpoint --help
+ndb exec --help
+ndb inspect --help
+```
+
+### Debugging Workflow for Agents
+
+A typical AI agent debugging session:
+
+```bash
+# 1. Build the project
+dotnet build
+
+# 2. Start debugging with stop-on-entry
+ndb launch bin/Debug/net10.0/MyApp.dll --stop-on-entry
+
+# 3. Set breakpoint where the bug might be
+ndb breakpoint set Controllers/UserController.cs 87
+
+# 4. Continue to the breakpoint
+ndb exec continue --wait --timeout 60
+
+# 5. Inspect state at breakpoint
+ndb inspect stacktrace
+ndb inspect variables
+ndb inspect evaluate "users.Count"
+
+# 6. Step through code
+ndb exec step-over --wait
+ndb inspect variables
+
+# 7. Done
+ndb stop
+```
+
 ## Building from Source
 
 ### Prerequisites
@@ -158,7 +225,7 @@ ndb stop --session worker
 ### Build
 
 ```bash
-git clone https://github.com/user/ndb.git
+git clone https://github.com/khandrym/ndb.git
 cd ndb
 dotnet build ndb.slnx
 ```

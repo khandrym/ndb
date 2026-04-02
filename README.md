@@ -18,6 +18,10 @@ Once ndb is set up, ask your agent:
 - `Use ndb to find why the API returns 500 on /users`
 - `Set a breakpoint at Program.cs:42 and inspect the config variable`
 
+## Why
+
+AI agents (Claude Code, Codex, Copilot, etc.) need to debug .NET applications but can't use interactive debuggers like Visual Studio. ndb gives them a non-interactive CLI that speaks JSON, with a daemon that keeps the debug session alive between commands.
+
 ## Setup Instructions for AI Agents
 
 > **For AI agents:** the recommended way to install ndb is to download a pre-built release binary. Building from source is only needed for development — see [Building from Source](#building-from-source).
@@ -74,8 +78,8 @@ ndb stop
 
 | Command | Description |
 |---|---|
-| `ndb launch <dll> [--stop-on-entry] [--breakpoint file:line] [--env KEY=VALUE] [--args ...] [--cwd] [--verbose] [--session name]` | Launch app under debugger |
-| `ndb attach --pid <PID> [--session name]` | Attach to running process |
+| `ndb launch <dll> [--stop-on-entry] [--breakpoint/-b file:line] [--env/-e KEY=VALUE] [--args ...] [--cwd] [--verbose] [--session name]` | Launch app under debugger |
+| `ndb attach --pid <PID> [--verbose] [--session name]` | Attach to running process |
 | `ndb stop [--detach] [--terminate] [--session name]` | Stop debug session (attach sessions detach by default, launch sessions terminate) |
 | `ndb status [--session name]` | Show session status (or list all sessions) |
 | `ndb setup` | Download and install netcoredbg |
@@ -98,11 +102,11 @@ ndb stop
 
 | Command | Description |
 |---|---|
-| `ndb exec continue [--wait] [--timeout <sec>]` | Resume execution |
+| `ndb exec continue [--wait] [--timeout <sec>] [--thread <id>]` | Resume execution |
 | `ndb exec pause` | Pause execution |
-| `ndb exec step-over [--wait] [--timeout <sec>]` | Step over |
-| `ndb exec step-into [--wait] [--timeout <sec>]` | Step into |
-| `ndb exec step-out [--wait] [--timeout <sec>]` | Step out |
+| `ndb exec step-over [--wait] [--timeout <sec>] [--thread <id>]` | Step over |
+| `ndb exec step-into [--wait] [--timeout <sec>] [--thread <id>]` | Step into |
+| `ndb exec step-out [--wait] [--timeout <sec>] [--thread <id>]` | Step out |
 | `ndb exec run-to-cursor <file> <line> [--timeout <sec>]` | Run to specific line |
 
 The `--wait` flag blocks until the debuggee stops (breakpoint, step complete, exception). Returns the stop reason, thread ID, and current frame — everything in one call.
@@ -113,8 +117,8 @@ The `--wait` flag blocks until the debuggee stops (breakpoint, step complete, ex
 |---|---|
 | `ndb inspect stacktrace [--thread <id>]` | Show call stack |
 | `ndb inspect threads` | List threads |
-| `ndb inspect variables [--frame <id>] [--scope <idx>] [--expand <ref>]` | Show variables (use `--expand` for nested objects) |
-| `ndb inspect evaluate <expr> [--frame <id>]` | Evaluate expression |
+| `ndb inspect variables [--frame <id>] [--scope <idx>] [--expand <ref>] [--thread <id>]` | Show variables (use `--expand` for nested objects) |
+| `ndb inspect evaluate <expr> [--frame <id>] [--thread <id>]` | Evaluate expression |
 | `ndb inspect source <file> [--line <n>] [--count <n>]` | Show source code |
 
 ### Multi-Session
@@ -169,10 +173,6 @@ netcoredbg is discovered in this order:
 1. `NETCOREDBG_PATH` environment variable
 2. `./netcoredbg` (next to ndb binary)
 3. System PATH
-
-## Why
-
-AI agents (Claude Code, Codex, Copilot, etc.) need to debug .NET applications but can't use interactive debuggers like Visual Studio. ndb gives them a non-interactive CLI that speaks JSON, with a daemon that keeps the debug session alive between commands.
 
 ## How It Works
 
